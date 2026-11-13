@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v0.7 — 2026-11-13 2:20 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v0.8 — 2026-11-13 2:10 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -118,6 +118,18 @@
         <div id="status" class="zone z-off"><span class="dot"></span><span id="statusTxt">–</span></div>
         <svg id="pathSvg" viewBox="0 0 320 76" aria-label="The moon's height over the next 24 hours"></svg>
         <div class="row2"><span id="windowMsg"></span><span id="nextEvent"></span></div>
+      </div>
+      <div class="card glass">
+        <h2>Big-moon alerts</h2>
+        <p class="mute" style="margin:0 0 10px">Get a phone alert before each low-moon window, through your iPhone Calendar.</p>
+        <div class="row2" style="font-size:15px;color:var(--ink);align-items:center"><label for="alertLead">Alert me</label>
+          <select id="alertLead" style="font:inherit;color:var(--ink);background:rgba(10,14,30,.7);border:1px solid var(--line);border-radius:12px;padding:8px 10px">
+            <option value="5">5 min before</option><option value="15" selected>15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select></div>
+        <label class="chk"><input id="alertFull" type="checkbox" checked> Only nights the moon is at least 40% lit</label>
+        <div id="alertList" class="mute small"></div>
+        <button id="alertBtn" class="btn gold mt">Add alerts to my Calendar</button>
+        <button id="alertShare" class="btn glass mt hidden">Share the alerts file instead</button>
+        <p id="alertMsg" class="mute small" style="margin:8px 0 0"></p>
       </div>
       <button id="goLive" class="btn gold"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1400" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Open live camera</button>
     </div>
@@ -249,7 +261,7 @@ let LOC=null, MOON=null;
 const $=id=>document.getElementById(id);
 function store(k,v){try{v===undefined?null:localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function setLoc(lat,lng,src){LOC={lat,lng};$('locMsg').classList.add('hidden');$('locNow').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)}`;$('locNow').title=src;store('mme-loc',lat+','+lng);updateMoon();}
+function setLoc(lat,lng,src){LOC={lat,lng};window._alertsShown=0;$('locMsg').classList.add('hidden');$('locNow').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)}`;$('locNow').title=src;store('mme-loc',lat+','+lng);updateMoon();}
 function tryGps(){
   if(!navigator.geolocation){gpsFail();return;}
   try{navigator.geolocation.getCurrentPosition(p=>setLoc(p.coords.latitude,p.coords.longitude,'phone GPS'),gpsFail,{enableHighAccuracy:false,timeout:8000,maximumAge:6e5});}catch(e){gpsFail();}
@@ -287,6 +299,7 @@ function updateMoon(){
   const w=findWindow(LOC.lat,LOC.lng);
   $('windowMsg').textContent=!w?'No low-moon window in 2 days':(w.start-now<6e4?`Best window: now – ${w.end?fmtT(w.end):'later'}`:`Best window: ${fmtDay(w.start)==='today'?'':fmtDay(w.start)+' '}${fmtT(w.start)}${w.end?' – '+fmtT(w.end):''}`);
   drawPath(LOC.lat,LOC.lng,now);
+  if(!window._alertsShown){window._alertsShown=1;refreshAlertList();}
 }
 /* Small chart: the moon's height over the next 24 hours, with the illusion window shaded */
 function drawPath(lat,lng,now){
@@ -670,6 +683,57 @@ $('saveBtn').onclick=async()=>{
   if(DL){try{await DL.save({filename:name,data:OUT_BLOB});return;}catch(e){if(e&&e.code==='declined')return;}}
   if(canShareFiles()){try{await navigator.share({files:[new File([OUT_BLOB],name,{type:'image/jpeg'})]});return;}catch(e){if(e&&e.name==='AbortError')return;}}
   $('saveHint').innerHTML='Saving isn’t available here. Touch and hold the picture, then tap <b>Save to Photos</b>.';
+};
+
+/* ---------- Big-moon alerts → iPhone Calendar (.ics with alarms) ---------- */
+function allWindows(lat,lng,days){
+  const step=5*60000,out=[],now=Math.ceil(Date.now()/step)*step;let start=null,best=null;   // 5-min grid keeps event IDs stable, so re-adding won't duplicate
+  for(let t=now;t<=now+days*864e5;t+=step){
+    const d=new Date(t),m=moonPos(d,lat,lng),s=sunAlt(d,lat,lng),ok=m.alt>=0&&m.alt<=10&&s<2;
+    if(ok){if(start===null){start=d;best=m;}}
+    else if(start!==null){const il=moonIllum(start);out.push({start,end:d,bearing:best.bearing,il});start=null;}
+  }
+  return out;
+}
+function upcomingAlerts(){
+  if(!LOC)return[];const minLit=$('alertFull').checked?0.4:0;
+  return allWindows(LOC.lat,LOC.lng,30).filter(w=>w.il.fraction>=minLit&&w.end-w.start>=10*60000);
+}
+function icsTime(d){return d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');}
+const icsEsc=t=>String(t).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+function buildIcs(ws,lead){
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Moon Minds Eye//Big moon alerts//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Big-moon alerts'];
+  const stamp=icsTime(new Date());
+  ws.forEach(w=>{
+    const pct=Math.round(w.il.fraction*100),dir=compass(w.bearing);
+    L.push('BEGIN:VEVENT','UID:mme-'+icsTime(w.start)+'-'+LOC.lat.toFixed(2)+'_'+LOC.lng.toFixed(2)+'@moon-minds-eye','DTSTAMP:'+stamp,
+      'DTSTART:'+icsTime(w.start),'DTEND:'+icsTime(w.end),
+      'SUMMARY:'+icsEsc(`Big-moon window: ${phaseName(w.il)} ${pct}%`),
+      'DESCRIPTION:'+icsEsc(`Moon low in the ${DIRNAME[dir]} (${Math.round(w.bearing)}°). Get trees or buildings in the frame. Open Moon Mind's Eye: https://moon-minds-eye.onrender.com`),
+      'URL:https://moon-minds-eye.onrender.com',
+      'BEGIN:VALARM','ACTION:DISPLAY','TRIGGER:-PT'+lead+'M','DESCRIPTION:'+icsEsc(`Big moon in ${lead} min: face ${dir}`),'END:VALARM','END:VEVENT');
+  });
+  L.push('END:VCALENDAR');return L.join('\r\n')+'\r\n';
+}
+function refreshAlertList(){
+  const box=$('alertList');if(!LOC){box.textContent='Set your location first.';return;}
+  const ws=upcomingAlerts();
+  if(!ws.length){box.textContent='No big-moon windows in the next 30 days with these settings.';$('alertBtn').disabled=true;return;}
+  $('alertBtn').disabled=false;
+  box.innerHTML=`<b style="color:var(--ink)">${ws.length} windows in the next 30 days.</b> Next: `+ws.slice(0,3).map(w=>`${w.start.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})} ${fmtT(w.start)} (${Math.round(w.il.fraction*100)}%)`).join(' · ');
+}
+$('alertFull').onchange=refreshAlertList;
+const canShareIcs=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'a.ics',{type:'text/calendar'})]}));}catch(e){return false;}};
+$('alertBtn').onclick=()=>{
+  const ws=upcomingAlerts();if(!ws.length)return;const ics=buildIcs(ws,+$('alertLead').value);
+  // Safari opens a calendar file and offers "Add All" to the Calendar app
+  const a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);a.download='big-moon-alerts.ics';document.body.appendChild(a);a.click();a.remove();
+  $('alertMsg').innerHTML=`Your phone should offer to add <b>${ws.length} events</b>. Tap <b>Add All</b>. Each one alerts you ${$('alertLead').selectedOptions[0].text}. Come back in a month to add the next batch.`;
+  if(canShareIcs())$('alertShare').classList.remove('hidden');
+};
+$('alertShare').onclick=async()=>{
+  const ws=upcomingAlerts();if(!ws.length)return;
+  try{await navigator.share({files:[new File([buildIcs(ws,+$('alertLead').value)],'big-moon-alerts.ics',{type:'text/calendar'})]});}catch(e){}
 };
 
 /* ---------- Tabs ---------- */
