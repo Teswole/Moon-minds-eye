@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v0.5 — 2026-11-13 12:55 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v0.6 — 2026-11-13 1:40 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -81,9 +81,32 @@
     </details>
   </section>
 
+  <!-- LIVE CAMERA -->
+  <section class="card" id="liveCard">
+    <h2>Live camera</h2>
+    <button id="liveStart" class="primary">🎥 Start live camera</button>
+    <div id="liveMsg" class="mute" style="margin-top:8px"></div>
+    <div id="liveWrap" class="hidden">
+      <div style="position:relative">
+        <canvas id="liveView"></canvas>
+        <div id="liveBadge" class="badge b-off" style="position:absolute;left:10px;top:0">Looking for the moon…</div>
+      </div>
+      <video id="liveVid" playsinline muted autoplay style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></video>
+      <div class="mute" style="margin-top:10px">Zoom: <b id="zoomVal">1.0x</b> <span id="zoomKind"></span></div>
+      <input id="zoomRange" class="slider" type="range" min="1" max="5" step="0.1" value="1">
+      <label class="chk"><input id="livePrevChk" type="checkbox" checked> Show the mind's-eye moon live</label>
+      <div style="display:flex;justify-content:center;margin-top:6px">
+        <button id="shutter" aria-label="Take picture" style="width:78px;height:78px;border-radius:50%;background:#fff;border:6px solid var(--gold);padding:0"></button>
+      </div>
+      <p class="mute" style="text-align:center;margin:6px 0 0">Hold steady: one tap takes 4 quick frames and merges them.</p>
+      <p class="mute" style="font-size:12px;text-align:center;margin:4px 0 0">Wrong light picked? Tap the moon on the screen.</p>
+      <button id="liveStop" class="wide" style="margin-top:10px">Stop camera</button>
+    </div>
+  </section>
+
   <!-- SHOOT -->
   <section class="card">
-    <h2>1 · Take the shot</h2>
+    <h2>Or use the iPhone Camera</h2>
     <label class="btn primary" for="camIn">📷 Take moon photo</label>
     <input id="camIn" type="file" accept="image/*" capture="environment">
     <label class="btn wide" for="libIn" style="margin-top:8px">🖼️ Pick from Photos (pick 3–5 shots for the cleanest result)</label>
@@ -98,7 +121,7 @@
 
   <!-- RESULT -->
   <section id="work" class="card hidden">
-    <h2>2 · Mind's-eye picture</h2>
+    <h2>Your mind's-eye picture</h2>
     <div id="cleanMsg" class="badge b-wait" style="margin:0 0 10px">✨ Polishing…</div>
     <p id="detMsg" class="mute" style="margin-top:0"></p>
     <canvas id="preview"></canvas>
@@ -255,13 +278,17 @@ function loadImg(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f
 async function onFiles(files){
   files=[...files].slice(0,6);if(!files.length)return;
   gpsFromFile(files[0]).then(g=>{if(g.lat!=null){setLoc(g.lat,g.lng,'from your moon photo');if(SRC&&DET)render();}});
-  $('work').classList.remove('hidden');$('work').scrollIntoView({behavior:'smooth'});
-  setClean(files.length>1?`✨ Merging ${files.length} shots…`:'✨ Polishing…');await tick();
   let imgs=[];for(const f of files){try{imgs.push(await loadImg(f));}catch(e){}}
   if(!imgs.length){alertMsg('Couldn’t open that photo. Try another one.');return;}
-  const first=imgs[0],maxSide=3600,sc=Math.min(1,maxSide/Math.max(first.naturalWidth,first.naturalHeight));
-  const W=Math.round(first.naturalWidth*sc),H=Math.round(first.naturalHeight*sc);
-  imgs=imgs.filter(i=>Math.abs(i.naturalWidth*sc-W)<2&&Math.abs(i.naturalHeight*sc-H)<2);
+  await processSources(imgs);
+}
+const NW=i=>i.naturalWidth||i.width, NH=i=>i.naturalHeight||i.height;
+async function processSources(imgs){
+  $('work').classList.remove('hidden');$('work').scrollIntoView({behavior:'smooth'});
+  setClean(imgs.length>1?`✨ Merging ${imgs.length} shots…`:'✨ Polishing…');await tick();
+  const first=imgs[0],maxSide=3600,sc=Math.min(1,maxSide/Math.max(NW(first),NH(first)));
+  const W=Math.round(NW(first)*sc),H=Math.round(NH(first)*sc);
+  imgs=imgs.filter(i=>Math.abs(NW(i)*sc-W)<2&&Math.abs(NH(i)*sc-H)<2);
   RAW=mk(W,H);RAWCTX=RAW.getContext('2d',{willReadFrequently:true});RAWCTX.drawImage(imgs[0],0,0,W,H);
   let merged=1;
   if(imgs.length>1){merged=await stack(imgs,W,H);}
@@ -365,15 +392,17 @@ function detect(hint,from){
 
 /* The "brain" model: the closer to the horizon, the more the mind inflates the moon,
    and a wide phone lens makes it look even smaller than the eye feels it. */
-function autoFactor(){
+function autoFactorFor(width,r){
   const a=MOON?Math.max(0,MOON.alt):5;
   const illusion=1+0.9*Math.min(1,Math.max(0,1-a/35));          // brain: about 1.9x at the horizon, 1x by about 35°
   const target=0.02+0.025*Math.min(1,Math.max(0,1-a/30));        // how wide the moon "feels" in the frame
-  const lens=target*SRC.width/(2*DET.r);                          // fixes the wide lens
+  const lens=target*width/(2*r);                          // fixes the wide lens
   const f=Math.min(4,Math.max(1,Math.max(illusion,lens)));
   const why=MOON?`(moon ${a.toFixed(0)}° up${lens>illusion?', wide lens':''})`:'(set location for a smarter guess)';
   return{f,why};
 }
+
+function autoFactor(){return autoFactorFor(SRC.width,DET.r);}
 
 function skyRef(cx,cy,r){
   const vals=[];
@@ -445,6 +474,79 @@ $('autoChk').onchange=()=>SRC&&render();
 let rt=null;$('sizeRange').oninput=()=>{$('autoChk').checked=false;$('sizeVal').textContent=(+$('sizeRange').value).toFixed(1)+'x';clearTimeout(rt);rt=setTimeout(()=>SRC&&render(),180);};
 $('fgChk').onchange=()=>SRC&&render();
 $('warmChk').onchange=()=>SRC&&render();
+
+/* ---------- Live camera: see the mind's-eye moon while aiming, burst-capture on tap ---------- */
+let STREAM=null,TRACK=null;const LIVE={det:null,lastDet:0,hint:null,busy:false,raf:0,hwZoom:null,miss:0};
+const vid=$('liveVid'),view=$('liveView'),vctx=view.getContext('2d');
+const small=mk(480,360),smx=small.getContext('2d',{willReadFrequently:true});
+const lm=mk(8,8),lmx=lm.getContext('2d');
+async function startLive(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('liveMsg').innerHTML='Live camera isn’t available here. Open <b>moon-minds-eye.onrender.com</b> in Safari.';return;}
+  $('liveMsg').textContent='Starting camera…';
+  try{STREAM=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}}});}
+  catch(e){$('liveMsg').innerHTML=e&&e.name==='NotAllowedError'?'Camera permission was blocked. In iPhone <b>Settings → Apps → Safari → Camera</b>, choose <b>Allow</b>, then reload this page.':'Couldn’t start the camera here. Open <b>moon-minds-eye.onrender.com</b> in Safari.';return;}
+  TRACK=STREAM.getVideoTracks()[0];vid.srcObject=STREAM;try{await vid.play();}catch(e){}
+  let caps={};try{caps=TRACK.getCapabilities?TRACK.getCapabilities():{};}catch(e){}
+  const zr=$('zoomRange');
+  if(caps.zoom&&caps.zoom.max>1){LIVE.hwZoom=caps.zoom;zr.min=caps.zoom.min||1;zr.max=Math.min(caps.zoom.max,10);zr.value=caps.zoom.min||1;$('zoomKind').textContent='(lens zoom)';}
+  else{LIVE.hwZoom=null;zr.min=1;zr.max=5;zr.value=1;$('zoomKind').textContent='(digital zoom)';}
+  $('zoomVal').textContent=(+zr.value).toFixed(1)+'x';
+  $('liveStart').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
+  LIVE.det=null;cancelAnimationFrame(LIVE.raf);liveLoop();
+}
+function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');}
+$('liveStart').onclick=startLive;$('liveStop').onclick=stopLive;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&STREAM)stopLive();});
+let zt=null;
+$('zoomRange').oninput=()=>{const z=+$('zoomRange').value;$('zoomVal').textContent=z.toFixed(1)+'x';LIVE.det=null;
+  if(LIVE.hwZoom&&TRACK){clearTimeout(zt);zt=setTimeout(()=>TRACK.applyConstraints({advanced:[{zoom:z}]}).catch(()=>{}),60);}};
+const digiZoom=()=>LIVE.hwZoom?1:+$('zoomRange').value;
+function cropRect(){const vw=vid.videoWidth,vh=vid.videoHeight,z=digiZoom(),w=vw/z,h=vh/z;return{x:(vw-w)/2,y:(vh-h)/2,w,h};}
+function liveLoop(){
+  LIVE.raf=requestAnimationFrame(liveLoop);
+  const vw=vid.videoWidth,vh=vid.videoHeight;if(!vw||!vh||LIVE.busy)return;
+  const c=cropRect(),dw=Math.min(1080,Math.round(c.w)),dh=Math.round(dw*c.h/c.w),k=c.w/dw;
+  if(view.width!==dw||view.height!==dh){view.width=dw;view.height=dh;}
+  vctx.drawImage(vid,c.x,c.y,c.w,c.h,0,0,dw,dh);
+  const now=performance.now();
+  if(now-LIVE.lastDet>250){
+    LIVE.lastDet=now;const sw=480,sh=Math.round(sw*c.h/c.w);
+    if(small.width!==sw||small.height!==sh){small.width=sw;small.height=sh;}
+    smx.drawImage(vid,c.x,c.y,c.w,c.h,0,0,sw,sh);
+    const h=LIVE.hint||(LIVE.det?{x:LIVE.det.cx,y:LIVE.det.cy}:null);   // keep tracking the same moon
+    const d=detect(h?{x:h.x*sw,y:h.y*sh}:null,small);
+    if(d&&d.r*2<sw*0.5){LIVE.det={cx:d.cx/sw,cy:d.cy/sh,r:d.r/sw};LIVE.miss=0;LIVE.hint=null;}
+    else if(++LIVE.miss>4)LIVE.det=null;
+  }
+  const b=$('liveBadge');
+  if(!LIVE.det){b.className='badge b-off';b.textContent=MOON&&MOON.alt<0?'The moon is below the horizon right now':'Looking for the moon… tap it if you see it';return;}
+  const D=LIVE.det,cx=D.cx*dw,cy=D.cy*dh,r=Math.max(2,D.r*dw),f=autoFactorFor(c.w,D.r*c.w).f;
+  const prev=$('livePrevChk').checked;
+  b.className='badge b-good';b.textContent=prev?`Moon locked ✓ ${f.toFixed(1)}x mind's eye`:'Moon locked ✓';
+  if(!prev){vctx.strokeStyle='#f5c76b';vctx.lineWidth=3;vctx.beginPath();vctx.arc(cx,cy,r*1.8+6,0,7);vctx.stroke();return;}
+  const R=r*1.4,S=Math.max(8,Math.min(1400,Math.round(2*R*f)));
+  if(lm.width!==S){lm.width=S;lm.height=S;}
+  lmx.globalCompositeOperation='source-over';lmx.clearRect(0,0,S,S);
+  lmx.drawImage(vid,c.x+(cx-R)*k,c.y+(cy-R)*k,2*R*k,2*R*k,0,0,S,S);   // sample from full-res video for sharpness
+  lmx.globalCompositeOperation='destination-in';
+  const fr=S/(2*R),g=lmx.createRadialGradient(S/2,S/2,r*fr,S/2,S/2,R*fr);g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,0)');
+  lmx.fillStyle=g;lmx.fillRect(0,0,S,S);
+  vctx.drawImage(lm,cx-S/2,cy-S/2);
+}
+view.addEventListener('click',e=>{const rc=view.getBoundingClientRect();LIVE.hint={x:(e.clientX-rc.left)/rc.width,y:(e.clientY-rc.top)/rc.height};LIVE.det=null;LIVE.lastDet=0;LIVE.miss=0;});
+$('shutter').onclick=async()=>{
+  if(!STREAM||LIVE.busy||!vid.videoWidth)return;
+  const c=cropRect(),sc=Math.min(1,3000/Math.max(c.w,c.h)),W=Math.round(c.w*sc),H=Math.round(c.h*sc),frames=[],b=$('liveBadge');
+  const hint=LIVE.det;
+  for(let i=0;i<4;i++){
+    const cv=mk(W,H);cv.getContext('2d').drawImage(vid,c.x,c.y,c.w,c.h,0,0,W,H);frames.push(cv);
+    b.className='badge b-wait';b.textContent=`📸 ${i+1}/4… hold still`;
+    await new Promise(r=>setTimeout(r,130));
+  }
+  LIVE.busy=true;
+  try{await processSources(frames);if(hint&&SRC){DET=detect({x:hint.cx*SRC.width,y:hint.cy*SRC.height});render();}}
+  finally{frames.forEach(f=>{f.width=f.height=0;});LIVE.busy=false;}
+};
 
 /* ---------- Save (Claude's download prompt opens the iPhone share sheet → Save Image) ---------- */
 let DL=null;
