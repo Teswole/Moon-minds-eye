@@ -1,0 +1,466 @@
+<!DOCTYPE html><!-- Moon Mind's Eye v0.5 — 2026-11-13 12:55 PM CST -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Moon Eye">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1020">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Moon Mind's Eye</title>
+<style>
+  :root{--bg:#0b1020;--card:#141b31;--line:#26304f;--ink:#eef1fa;--mute:#9aa4c4;--gold:#f5c76b;--good:#7be0a6;--warn:#ffb36b}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#1d2850,var(--bg));color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  main{max-width:640px;margin:0 auto;padding:18px 14px 60px}
+  h1{font-size:24px;margin:4px 0 2px;letter-spacing:.2px}
+  .sub{color:var(--mute);margin:0 0 16px;font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 14px}
+  .card h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:0 0 10px;font-weight:600}
+  .big{font-size:30px;font-weight:700}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .stat{flex:1 1 120px;background:#0f1528;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .stat b{display:block;font-size:20px}
+  .stat span{color:var(--mute);font-size:12px}
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:600;font-size:14px;margin-top:10px}
+  .b-good{background:#163a2a;color:var(--good)} .b-wait{background:#3a2a16;color:var(--warn)} .b-off{background:#232a44;color:var(--mute)}
+  button,.btn{appearance:none;border:0;border-radius:12px;padding:13px 16px;font:600 16px/1 inherit;font-family:inherit;cursor:pointer;background:#26304f;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .primary{background:var(--gold);color:#1a1400;width:100%;font-size:18px;padding:16px}
+  .wide{width:100%}
+  input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0f1528;color:var(--ink);font-size:16px}
+  input[type=file]{display:none}
+  .mute{color:var(--mute);font-size:14px}
+  .tips{margin:8px 0 0;padding-left:20px;color:var(--mute);font-size:14px}
+  .tips li{margin:4px 0}
+  canvas,img.out{width:100%;height:auto;border-radius:12px;display:block;background:#000}
+  #arrowWrap{display:none;text-align:center;margin-top:12px}
+  #arrow{font-size:64px;line-height:1;display:inline-block;transition:transform .15s linear;color:var(--gold)}
+  .slider{width:100%}
+  label.chk{display:flex;gap:8px;align-items:center;font-size:15px;margin:8px 0}
+  .hidden{display:none!important}
+  .seg{display:flex;background:#0f1528;border:1px solid var(--line);border-radius:12px;padding:3px;margin:10px 0}
+  .seg button{flex:1;background:transparent;padding:10px}
+  .seg button.on{background:#26304f}
+</style>
+</head>
+<body>
+<main>
+  <h1>🌕 Moon Mind's Eye</h1>
+  <p class="sub">Photograph the low moon the way your brain sees it, not the pin dot your camera records.</p>
+
+  <!-- MOON NOW -->
+  <section class="card">
+    <h2>Tonight's moon</h2>
+    <div id="locMsg" class="mute">Finding your location…</div>
+    <div id="moonInfo" class="hidden">
+      <div class="row">
+        <div class="stat"><b id="alt">–</b><span>height above horizon</span></div>
+        <div class="stat"><b id="dir">–</b><span>direction to face</span></div>
+        <div class="stat"><b id="phase">–</b><span>lit (phase)</span></div>
+      </div>
+      <div id="status" class="badge b-off">–</div>
+      <p id="windowMsg" class="mute" style="margin:10px 0 0"></p>
+      <button id="compassBtn" class="wide" style="margin-top:12px">🧭 Point me to the moon</button>
+      <div id="arrowWrap"><div id="arrow">⬆︎</div><div id="arrowMsg" class="mute"></div></div>
+    </div>
+    <div style="margin-top:12px">
+      <label class="btn wide" for="gpsCam">📍 Get my location from a quick photo</label>
+      <input id="gpsCam" type="file" accept="image/*" capture="environment">
+      <label class="btn wide" for="gpsLib" style="margin-top:8px">📍 Use a photo already taken here</label>
+      <input id="gpsLib" type="file" accept="image/*">
+      <div id="gpsResult" class="hidden" style="margin-top:10px;padding:12px;border-radius:12px;font-size:15px"></div>
+      <p class="mute" style="font-size:12px;margin:6px 0 0">Take a photo of anything. Only the GPS numbers are kept; the photo is thrown away and never saved.</p>
+    </div>
+    <details id="locBox" style="margin-top:12px">
+      <summary class="mute">Set location manually</summary>
+      <p class="mute">Type latitude, longitude (e.g. <i>29.95, -90.07</i>). In Apple Maps, drop a pin and tap it to see these numbers.</p>
+      <div class="row"><input id="locInput" type="text" placeholder="lat, lon" inputmode="text"><button id="locSave" class="wide">Save location</button></div>
+      <button id="locGps" class="wide" style="margin-top:8px">📍 Try my phone's location again</button>
+    </details>
+  </section>
+
+  <!-- SHOOT -->
+  <section class="card">
+    <h2>1 · Take the shot</h2>
+    <label class="btn primary" for="camIn">📷 Take moon photo</label>
+    <input id="camIn" type="file" accept="image/*" capture="environment">
+    <label class="btn wide" for="libIn" style="margin-top:8px">🖼️ Pick from Photos (pick 3–5 shots for the cleanest result)</label>
+    <input id="libIn" type="file" accept="image/*" multiple>
+    <ul class="tips">
+      <li>Get trees, rooftops or a skyline in the frame. The foreground is what makes the moon feel big.</li>
+      <li>Use <b>2x, 3x or 5x</b> zoom if your iPhone has it. The app enlarges more from there.</li>
+      <li><b>Touch and hold the moon</b> on screen to lock focus, then drag the ☀︎ slider <b>down</b> until the moon stops being a white blob.</li>
+      <li>Lean on something steady and take <b>3–5 shots in a row</b>. Picking them all lets the app merge them, which removes the most grain.</li>
+    </ul>
+  </section>
+
+  <!-- RESULT -->
+  <section id="work" class="card hidden">
+    <h2>2 · Mind's-eye picture</h2>
+    <div id="cleanMsg" class="badge b-wait" style="margin:0 0 10px">✨ Polishing…</div>
+    <p id="detMsg" class="mute" style="margin-top:0"></p>
+    <canvas id="preview"></canvas>
+    <p class="mute">Wrong spot? <b>Tap the moon</b> in the picture above.</p>
+
+    <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
+    <input id="sizeRange" class="slider" type="range" min="1" max="4" step="0.1" value="2.5">
+    <div class="mute">Moon size: <b id="sizeVal">2.5x</b> <span id="sizeWhy"></span></div>
+    <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front of the moon</label>
+    <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
+    <label class="chk"><input id="cleanChk" type="checkbox" checked> ✨ Crystal-clear clean-up (remove grain, sharpen)</label>
+
+    <div class="seg"><button id="vAfter" class="on">Mind's eye</button><button id="vBefore">Camera saw</button></div>
+    <img id="outImg" class="out" alt="Mind's-eye moon photo">
+    <button id="saveBtn" class="primary hidden" style="margin-top:12px">⬇︎ Save photo</button>
+    <p class="mute" id="saveHint">Or touch and hold the picture, then tap <b>Save to Photos</b>.</p>
+    <p class="mute" style="font-size:12px">This is an edited picture: the moon is enlarged to match how it looks to the eye.</p>
+  </section>
+</main>
+
+<script>
+/* ---------- Moon & sun math (adapted from the SunCalc formulas, accurate to about 1°) ---------- */
+const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, ob=rad*23.4397;
+const toDays=d=>d.valueOf()/dayMs-0.5+J1970-J2000;
+const RA=(l,b)=>Math.atan2(Math.sin(l)*Math.cos(ob)-Math.tan(b)*Math.sin(ob),Math.cos(l));
+const DEC=(l,b)=>Math.asin(Math.sin(b)*Math.cos(ob)+Math.cos(b)*Math.sin(ob)*Math.sin(l));
+const AZ=(H,p,d)=>Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(p)-Math.tan(d)*Math.cos(p));
+const ALT=(H,p,d)=>Math.asin(Math.sin(p)*Math.sin(d)+Math.cos(p)*Math.cos(d)*Math.cos(H));
+const ST=(d,lw)=>rad*(280.16+360.9856235*d)-lw;
+function sunCoords(d){const M=rad*(357.5291+0.98560028*d);const C=rad*(1.9148*Math.sin(M)+0.02*Math.sin(2*M)+0.0003*Math.sin(3*M));const L=M+C+rad*102.9372+Math.PI;return{dec:DEC(L,0),ra:RA(L,0)};}
+function moonCoords(d){const L=rad*(218.316+13.176396*d),M=rad*(134.963+13.064993*d),F=rad*(93.272+13.229350*d);const l=L+rad*6.289*Math.sin(M),b=rad*5.128*Math.sin(F);return{ra:RA(l,b),dec:DEC(l,b),dist:385001-20905*Math.cos(M)};}
+function refr(h){if(h<0)h=0;return 0.0002967/Math.tan(h+0.00312536/(h+0.08901179));}
+function moonPos(t,lat,lng){const lw=rad*-lng,p=rad*lat,d=toDays(t),c=moonCoords(d),H=ST(d,lw)-c.ra;let h=ALT(H,p,c.dec);h+=refr(h);return{alt:h/rad,bearing:(AZ(H,p,c.dec)/rad+540)%360};}
+function sunAlt(t,lat,lng){const lw=rad*-lng,p=rad*lat,d=toDays(t),s=sunCoords(d),H=ST(d,lw)-s.ra;return ALT(H,p,s.dec)/rad;}
+function moonIllum(t){const d=toDays(t),s=sunCoords(d),m=moonCoords(d),sd=149598000;const phi=Math.acos(Math.sin(s.dec)*Math.sin(m.dec)+Math.cos(s.dec)*Math.cos(m.dec)*Math.cos(s.ra-m.ra));const inc=Math.atan2(sd*Math.sin(phi),m.dist-sd*Math.cos(phi));const ang=Math.atan2(Math.cos(s.dec)*Math.sin(s.ra-m.ra),Math.sin(s.dec)*Math.cos(m.dec)-Math.cos(s.dec)*Math.sin(m.dec)*Math.cos(s.ra-m.ra));return{fraction:(1+Math.cos(inc))/2,waxing:ang<0};}
+const compass=b=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(b/22.5)%16];
+const fmtT=t=>t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+const fmtDay=t=>{const n=new Date();const tm=new Date(n);tm.setDate(n.getDate()+1);if(t.toDateString()===n.toDateString())return'today';if(t.toDateString()===tm.toDateString())return'tomorrow';return t.toLocaleDateString([], {weekday:'long'});};
+
+/* Illusion zone: moon 0–10° up while the sky is darkening/dark */
+function findWindow(lat,lng){const now=Date.now();let start=null;for(let i=0;i<=48*12;i++){const t=new Date(now+i*3e5);const m=moonPos(t,lat,lng),s=sunAlt(t,lat,lng);const ok=m.alt>=0&&m.alt<=10&&s<2;if(ok&&!start)start=t;if(!ok&&start)return{start,end:t};}return start?{start,end:null}:null;}
+
+/* ---------- Location ---------- */
+let LOC=null, MOON=null;
+const $=id=>document.getElementById(id);
+function store(k,v){try{v===undefined?null:localStorage.setItem(k,v)}catch(e){}}
+function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function setLoc(lat,lng,src){LOC={lat,lng};$('locMsg').textContent=`Location: ${lat.toFixed(2)}, ${lng.toFixed(2)} (${src})`;store('mme-loc',lat+','+lng);updateMoon();}
+function tryGps(){
+  if(!navigator.geolocation){gpsFail();return;}
+  try{navigator.geolocation.getCurrentPosition(p=>setLoc(p.coords.latitude,p.coords.longitude,'phone GPS'),gpsFail,{enableHighAccuracy:false,timeout:8000,maximumAge:6e5});}catch(e){gpsFail();}
+}
+function gpsFail(){
+  const s=load('mme-loc');
+  if(s){const[a,b]=s.split(',').map(Number);setLoc(a,b,'saved');return;}
+  $('locMsg').innerHTML='Location isn’t available here. Open <b>Set location manually</b> below.';
+  $('locBox').open=true;
+}
+$('locSave').onclick=()=>{const m=$('locInput').value.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);if(!m){$('locMsg').textContent='Couldn’t read that. Use the format: 29.95, -90.07';return;}const a=+m[1],b=+m[2];if(Math.abs(a)>90||Math.abs(b)>180){$('locMsg').textContent='Those numbers are out of range.';return;}setLoc(a,b,'manual');$('locBox').open=false;};
+$('locGps').onclick=tryGps;
+
+function updateMoon(){
+  if(!LOC)return;
+  const now=new Date();MOON=moonPos(now,LOC.lat,LOC.lng);const il=moonIllum(now);const s=sunAlt(now,LOC.lat,LOC.lng);
+  $('moonInfo').classList.remove('hidden');
+  $('alt').textContent=MOON.alt.toFixed(1)+'°';
+  $('dir').textContent=`${compass(MOON.bearing)} ${Math.round(MOON.bearing)}°`;
+  $('phase').textContent=Math.round(il.fraction*100)+'%'+(il.waxing?' ↑':' ↓');
+  const st=$('status');
+  if(MOON.alt<0){st.className='badge b-off';st.textContent='Below the horizon';}
+  else if(MOON.alt<=10){st.className='badge b-good';st.textContent=s<2?'🔥 Illusion zone, shoot now!':'Low, but the sky is still bright';}
+  else if(MOON.alt<=20){st.className='badge b-wait';st.textContent='Getting high; the illusion is fading';}
+  else{st.className='badge b-off';st.textContent='Too high for the big-moon look';}
+  const w=findWindow(LOC.lat,LOC.lng);
+  $('windowMsg').textContent=!w?'No low-moon window in the next 2 days.':
+    (w.start-now<6e4?`Best window: now until ${w.end?fmtT(w.end):'later'}.`:`Next best window: ${fmtDay(w.start)} ${fmtT(w.start)}${w.end?'–'+fmtT(w.end):''}.`)+(il.fraction<0.15?' (Thin moon this week; a fuller moon looks best.)':'');
+}
+setInterval(updateMoon,60000);
+
+/* ---------- GPS from a photo's hidden location tag (EXIF). The photo itself is never kept. ---------- */
+async function gpsFromFile(f){
+  try{
+    const buf=await f.slice(0,512*1024).arrayBuffer();const v=new DataView(buf);
+    if(v.getUint16(0)!==0xFFD8)return{err:'format'};
+    let o=2;
+    while(o+4<v.byteLength){
+      const mk_=v.getUint16(o),len=v.getUint16(o+2);
+      if(mk_===0xFFE1&&v.getUint32(o+4)===0x45786966){ // "Exif"
+        const t=o+10,le=v.getUint16(t)===0x4949;
+        const u16=p=>v.getUint16(t+p,le),u32=p=>v.getUint32(t+p,le);
+        const ifd0=u32(4),n0=u16(ifd0);let gps=0;
+        for(let i=0;i<n0;i++){const e=ifd0+2+i*12;if(u16(e)===0x8825)gps=u32(e+8);}
+        if(!gps)return{err:'nogps'};
+        const n=u16(gps),tags={};
+        for(let i=0;i<n;i++){const e=gps+2+i*12,tag=u16(e),cnt=u32(e+4);
+          if(tag===1||tag===3)tags[tag]=String.fromCharCode(v.getUint8(t+e+8));
+          if(tag===2||tag===4){const p=u32(e+8),r=k=>u32(p+k*8)/(u32(p+k*8+4)||1);tags[tag]=r(0)+r(1)/60+r(2)/3600;}}
+        if(tags[2]==null||tags[4]==null)return{err:'nogps'};
+        const lat=tags[2]*(tags[1]==='S'?-1:1),lng=tags[4]*(tags[3]==='W'?-1:1);
+        if(!lat&&!lng)return{err:'nogps'};
+        return{lat,lng};
+      }
+      if((mk_&0xFF00)!==0xFF00)break;o+=2+len;
+    }
+    return{err:'nogps'};
+  }catch(e){return{err:'read'};}
+}
+function gpsShow(kind,html){const b=$('gpsResult');b.classList.remove('hidden');
+  b.style.background=kind==='ok'?'#163a2a':kind==='busy'?'#232a44':'#3a2a16';b.style.color=kind==='ok'?'#7be0a6':kind==='busy'?'#c9d0ea':'#ffcf9e';b.innerHTML=html;}
+async function onGpsPhoto(e){
+  const f=e.target.files&&e.target.files[0];e.target.value='';   // clear right away: the photo is not kept
+  if(!f){gpsShow('bad','No photo came through. Try the button again.');return;}
+  gpsShow('busy','⏳ Reading location from the photo…');
+  const g=await gpsFromFile(f);
+  if(g.lat!=null){
+    setLoc(g.lat,g.lng,'from photo');$('locBox').open=false;
+    gpsShow('ok',`✅ <b>Location found and saved</b><br>${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}<br><span style="font-size:13px">Photo discarded. Moon info above is now for this spot.</span>`);
+    return;
+  }
+  const kind=(f.type||'').toLowerCase();
+  const msg=g.err==='format'
+    ?`❌ <b>Couldn't read this photo type</b> (${kind||'unknown'}). Set your location manually below.`
+    :g.err==='read'
+    ?'❌ <b>Couldn’t open the photo.</b> Try again, or set your location manually below.'
+    :'❌ <b>No location in this photo.</b> iPhone removed the GPS before handing the photo to the app. Try <b>Use a photo already taken here</b>, or set your location manually below.';
+  gpsShow('bad',msg);$('locBox').open=true;
+}
+$('gpsCam').onchange=onGpsPhoto;$('gpsLib').onchange=onGpsPhoto;
+
+/* ---------- Compass arrow (works where the phone shares motion data) ---------- */
+let heading=null;
+$('compassBtn').onclick=async()=>{
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined'&&DeviceOrientationEvent.requestPermission){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw 0;}
+    window.addEventListener('deviceorientation',e=>{heading=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);drawArrow();});
+    $('arrowWrap').style.display='block';$('arrowMsg').textContent='Hold the phone flat and turn…';
+    setTimeout(()=>{if(heading==null)compassFail();},2500);
+  }catch(e){compassFail();}
+};
+function compassFail(){$('arrowWrap').style.display='block';$('arrow').textContent='🧭';$('arrow').style.transform='none';$('arrowMsg').innerHTML=MOON?`The compass isn't available in this view. Open the iPhone <b>Compass</b> app and face <b>${compass(MOON.bearing)} (${Math.round(MOON.bearing)}°)</b>, then look ${MOON.alt.toFixed(0)}° up.`:'The compass isn\'t available in this view.';}
+function drawArrow(){if(heading==null||!MOON)return;const diff=((MOON.bearing-heading)+540)%360-180;$('arrow').style.transform=`rotate(${diff}deg)`;$('arrowMsg').textContent=Math.abs(diff)<8?`You're facing it. Look ${MOON.alt.toFixed(0)}° up.`:`Turn ${diff>0?'right':'left'} ${Math.abs(Math.round(diff))}°`;}
+
+/* ---------- Image pipeline ---------- */
+let SRC=null, SCTX=null, DET=null, OUT_BLOB=null, showBefore=false;
+const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
+const lumOf=(d,i)=>0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+const smooth=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t);};
+
+/* ---------- Load one or many photos → merge (stack) → clean → find moon ---------- */
+let RAW=null, RAWCTX=null, CLEANINFO=null;
+const tick=()=>new Promise(r=>setTimeout(r,30));
+function setClean(msg,cls){const b=$('cleanMsg');b.textContent=msg;b.className='badge '+(cls||'b-wait');}
+function loadImg(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i);};i.onerror=()=>{URL.revokeObjectURL(u);rej();};i.src=u;});}
+async function onFiles(files){
+  files=[...files].slice(0,6);if(!files.length)return;
+  gpsFromFile(files[0]).then(g=>{if(g.lat!=null){setLoc(g.lat,g.lng,'from your moon photo');if(SRC&&DET)render();}});
+  $('work').classList.remove('hidden');$('work').scrollIntoView({behavior:'smooth'});
+  setClean(files.length>1?`✨ Merging ${files.length} shots…`:'✨ Polishing…');await tick();
+  let imgs=[];for(const f of files){try{imgs.push(await loadImg(f));}catch(e){}}
+  if(!imgs.length){alertMsg('Couldn’t open that photo. Try another one.');return;}
+  const first=imgs[0],maxSide=3600,sc=Math.min(1,maxSide/Math.max(first.naturalWidth,first.naturalHeight));
+  const W=Math.round(first.naturalWidth*sc),H=Math.round(first.naturalHeight*sc);
+  imgs=imgs.filter(i=>Math.abs(i.naturalWidth*sc-W)<2&&Math.abs(i.naturalHeight*sc-H)<2);
+  RAW=mk(W,H);RAWCTX=RAW.getContext('2d',{willReadFrequently:true});RAWCTX.drawImage(imgs[0],0,0,W,H);
+  let merged=1;
+  if(imgs.length>1){merged=await stack(imgs,W,H);}
+  SRC=mk(W,H);SCTX=SRC.getContext('2d',{willReadFrequently:true});SCTX.drawImage(RAW,0,0);
+  CLEANINFO=null;
+  if($('cleanChk').checked){setClean('✨ Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,W,H);CLEANINFO.merged=merged;}
+  DET=detect(null);render();
+}
+$('camIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
+$('libIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
+$('cleanChk').onchange=async()=>{if(!RAW)return;SCTX.drawImage(RAW,0,0);CLEANINFO=null;if($('cleanChk').checked){setClean('✨ Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,SRC.width,SRC.height);}DET=detect(DET?{x:DET.cx,y:DET.cy}:null);render();};
+
+/* Merge shots: line each one up on the moon, then average. Grain is random, so it cancels out. */
+async function stack(imgs,W,H){
+  const ref=detect(null,RAW);const sum=new Uint16Array(W*H*3),cnt=new Uint8Array(W*H);let used=0;
+  const tmp=mk(W,H),tx=tmp.getContext('2d',{willReadFrequently:true});
+  for(let k=0;k<imgs.length;k++){
+    tx.clearRect(0,0,W,H);tx.drawImage(imgs[k],0,0,W,H);
+    let dx=0,dy=0;if(ref){const d=detect(ref?{x:ref.cx,y:ref.cy}:null,tmp);if(!d||Math.hypot(d.cx-ref.cx,d.cy-ref.cy)>W*0.08)continue;dx=Math.round(ref.cx-d.cx);dy=Math.round(ref.cy-d.cy);}
+    const p=tx.getImageData(0,0,W,H).data;
+    for(let y=0;y<H;y++){const sy=y-dy;if(sy<0||sy>=H)continue;for(let x=0;x<W;x++){const sx=x-dx;if(sx<0||sx>=W)continue;const si=(sy*W+sx)*4,di=y*W+x;sum[di*3]+=p[si];sum[di*3+1]+=p[si+1];sum[di*3+2]+=p[si+2];cnt[di]++;}}
+    used++;setClean(`✨ Merging shots… ${k+1}/${imgs.length}`);await tick();
+  }
+  if(used<2)return 1;
+  const o=RAWCTX.getImageData(0,0,W,H),od=o.data;
+  for(let i=0;i<W*H;i++){const c=cnt[i];if(!c)continue;od[i*4]=sum[i*3]/c;od[i*4+1]=sum[i*3+1]/c;od[i*4+2]=sum[i*3+2]/c;}
+  RAWCTX.putImageData(o,0,0);return used;
+}
+
+/* Fast blur used by the clean-up steps */
+function boxH(s,d,w,h,r){const n=2*r+1;for(let y=0;y<h;y++){const o=y*w;let acc=0;for(let i=-r;i<=r;i++)acc+=s[o+Math.min(w-1,Math.max(0,i))];for(let x=0;x<w;x++){d[o+x]=(acc/n+0.5)|0;acc+=s[o+Math.min(w-1,x+r+1)]-s[o+Math.max(0,x-r)];}}}
+function boxV(s,d,w,h,r){const n=2*r+1;for(let x=0;x<w;x++){let acc=0;for(let i=-r;i<=r;i++)acc+=s[Math.min(h-1,Math.max(0,i))*w+x];for(let y=0;y<h;y++){d[y*w+x]=(acc/n+0.5)|0;acc+=s[Math.min(h-1,y+r+1)*w+x]-s[Math.max(0,y-r)*w+x];}}}
+function blur(s,w,h,r,passes){const a=new Uint8Array(s.length),b=new Uint8Array(s.length);let src=s;for(let p=0;p<passes;p++){boxH(src,a,w,h,r);boxV(a,b,w,h,r);src=b;}return b;}
+function grain(Y,Yb){const hist=new Uint32Array(256);let n=0;for(let i=0;i<Y.length;i+=7){if(Y[i]>235)continue;hist[Math.abs(Y[i]-Yb[i])]++;n++;}let c=0;for(let v=0;v<256;v++){c+=hist[v];if(c>=n/2)return Math.max(0.3,v);}return 0;}
+function lumaPlane(d,n){const Y=new Uint8Array(n);for(let i=0;i<n;i++)Y[i]=(0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2]+0.5)|0;return Y;}
+
+/* Grain removal: smooth flat areas (sky), keep edges (moon, trees, rooftops), wipe color speckles */
+function denoisePass(ctx,w,h,strength){
+  const n=w*h,img=ctx.getImageData(0,0,w,h),d=img.data;
+  const Y=new Uint8Array(n),Cb=new Uint8Array(n),Cr=new Uint8Array(n);
+  for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2];Y[i]=(0.299*r+0.587*g+0.114*b+0.5)|0;Cb[i]=Math.max(0,Math.min(255,128-0.168736*r-0.331264*g+0.5*b+0.5))|0;Cr[i]=Math.max(0,Math.min(255,128+0.5*r-0.418688*g-0.081312*b+0.5))|0;}
+  const Yb=blur(Y,w,h,2,2),sig=Math.max(0.8,grain(Y,Yb));
+  const Cbb=blur(Cb,w,h,3,2),Crb=blur(Cr,w,h,3,2);
+  const lo=sig*1.3*strength,hi=sig*3.8*strength;
+  for(let i=0;i<n;i++){
+    const diff=Math.abs(Y[i]-Yb[i]);const k=smooth(lo,hi,diff);
+    const y=Yb[i]+k*(Y[i]-Yb[i]);
+    const cb=Cbb[i]+k*0.35*(Cb[i]-Cbb[i])-128,cr=Crb[i]+k*0.35*(Cr[i]-Crb[i])-128;
+    d[i*4]=y+1.402*cr;d[i*4+1]=y-0.344136*cb-0.714136*cr;d[i*4+2]=y+1.772*cb;
+  }
+  ctx.putImageData(img,0,0);return sig;
+}
+function measureGrain(ctx,w,h){const d=ctx.getImageData(0,0,w,h).data,Y=lumaPlane(d,w*h);return grain(Y,blur(Y,w,h,2,2));}
+
+/* Crisp-up: sharpen real detail only (ignores leftover grain below the threshold) */
+function sharpenData(d,w,h,r,amount,thr){
+  const n=w*h,Y=lumaPlane(d,n),Yb=blur(Y,w,h,r,2);
+  for(let i=0;i<n;i++){const det=Y[i]-Yb[i];if(Math.abs(det)<=thr)continue;const s=amount*(det-Math.sign(det)*thr);d[i*4]+=s;d[i*4+1]+=s;d[i*4+2]+=s;}
+}
+
+/* Clean, then check: if grain is still visible, clean again (stronger) before showing the picture */
+async function cleanUp(ctx,w,h){
+  const before=denoisePass(ctx,w,h,1.0);await tick();
+  let after=measureGrain(ctx,w,h),passes=1;
+  while(after>1.2&&passes<3){setClean(`✨ Still a bit grainy, cleaning again (${passes+1})…`);await tick();denoisePass(ctx,w,h,1+0.5*passes);after=measureGrain(ctx,w,h);passes++;}
+  return{before,after,passes};
+}
+
+function alertMsg(m){$('detMsg').textContent=m;}
+
+/* Find the moon: brightest compact blob (or the one nearest a tap) */
+function detect(hint,from){
+  from=from||SRC;
+  const W=Math.min(700,from.width),sc=W/from.width,H=Math.round(from.height*sc);
+  const c=mk(W,H),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(from,0,0,W,H);
+  const d=x.getImageData(0,0,W,H).data,L=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++)L[i]=lumOf(d,i*4);
+  let x0=0,y0=0,x1=W,y1=H;
+  if(hint){const hw=Math.round(W*0.12);const hx=Math.round(hint.x*sc),hy=Math.round(hint.y*sc);x0=Math.max(0,hx-hw);x1=Math.min(W,hx+hw);y0=Math.max(0,hy-hw);y1=Math.min(H,hy+hw);}
+  let mx=0;for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++)mx=Math.max(mx,L[y*W+xx]);
+  if(mx<45)return null;
+  const t=Math.max(mx*0.72,40),seen=new Uint8Array(W*H);let best=null;
+  for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++){
+    const s0=y*W+xx;if(seen[s0]||L[s0]<t)continue;
+    const st=[s0];seen[s0]=1;let area=0,sum=0,bx0=W,by0=H,bx1=0,by1=0;
+    while(st.length){const p=st.pop(),py=(p/W)|0,px=p-py*W;area++;sum+=L[p];if(px<bx0)bx0=px;if(px>bx1)bx1=px;if(py<by0)by0=py;if(py>by1)by1=py;
+      if(px>0){const q=p-1;if(!seen[q]&&L[q]>=t){seen[q]=1;st.push(q);}}
+      if(px<W-1){const q=p+1;if(!seen[q]&&L[q]>=t){seen[q]=1;st.push(q);}}
+      if(py>0){const q=p-W;if(!seen[q]&&L[q]>=t){seen[q]=1;st.push(q);}}
+      if(py<H-1){const q=p+W;if(!seen[q]&&L[q]>=t){seen[q]=1;st.push(q);}}}
+    const bw=bx1-bx0+1,bh=by1-by0+1,asp=Math.max(bw,bh)/Math.min(bw,bh);
+    const fill=area/(bw*bh);
+    let score=sum*(asp>2.6?0.2:1)*(fill<0.25?0.4:1)*(area<2?0.2:1);
+    if(area>W*H*0.2)score*=0.05; // huge bright area = sky/light, not moon
+    if(hint){const dx=(bx0+bx1)/2-hint.x*sc,dy=(by0+by1)/2-hint.y*sc;score/=1+Math.hypot(dx,dy)/(W*0.03);}
+    if(!best||score>best.score)best={score,cx:(bx0+bx1+1)/2,cy:(by0+by1+1)/2,r:Math.max(bw,bh)/2};
+  }
+  if(!best)return null;
+  return{cx:best.cx/sc,cy:best.cy/sc,r:Math.max(2,(best.r+0.5)/sc)};
+}
+
+/* The "brain" model: the closer to the horizon, the more the mind inflates the moon,
+   and a wide phone lens makes it look even smaller than the eye feels it. */
+function autoFactor(){
+  const a=MOON?Math.max(0,MOON.alt):5;
+  const illusion=1+0.9*Math.min(1,Math.max(0,1-a/35));          // brain: about 1.9x at the horizon, 1x by about 35°
+  const target=0.02+0.025*Math.min(1,Math.max(0,1-a/30));        // how wide the moon "feels" in the frame
+  const lens=target*SRC.width/(2*DET.r);                          // fixes the wide lens
+  const f=Math.min(4,Math.max(1,Math.max(illusion,lens)));
+  const why=MOON?`(moon ${a.toFixed(0)}° up${lens>illusion?', wide lens':''})`:'(set location for a smarter guess)';
+  return{f,why};
+}
+
+function skyRef(cx,cy,r){
+  const vals=[];
+  for(let k=0;k<3;k++){const rr=r*(1.7+k*0.5);for(let i=0;i<48;i++){const a=i/48*2*Math.PI;const x=Math.round(cx+Math.cos(a)*rr),y=Math.round(cy+Math.sin(a)*rr);if(x<0||y<0||x>=SRC.width||y>=SRC.height)continue;const d=SCTX.getImageData(x,y,1,1).data;vals.push(lumOf(d,0));}}
+  if(!vals.length)return 0;vals.sort((a,b)=>a-b);return vals[vals.length>>1];
+}
+
+function drawPreview(){
+  const pv=$('preview'),W=Math.min(1200,SRC.width),sc=W/SRC.width;pv.width=W;pv.height=Math.round(SRC.height*sc);
+  const x=pv.getContext('2d');x.drawImage(SRC,0,0,pv.width,pv.height);
+  if(DET){x.strokeStyle='#f5c76b';x.lineWidth=Math.max(2,W/300);x.beginPath();x.arc(DET.cx*sc,DET.cy*sc,Math.max(10,DET.r*sc*1.8),0,7);x.stroke();}
+}
+$('preview').addEventListener('click',e=>{
+  const pv=$('preview'),rect=pv.getBoundingClientRect();
+  const hx=(e.clientX-rect.left)/rect.width*SRC.width,hy=(e.clientY-rect.top)/rect.height*SRC.height;
+  DET=detect({x:hx,y:hy});render();
+});
+
+function render(){
+  drawPreview();
+  if(!DET){if(CLEANINFO)setClean('✨ Clean-up done','b-good');alertMsg('I couldn’t find the moon. Tap it in the picture below.');$('outImg').removeAttribute('src');$('saveBtn').classList.add('hidden');return;}
+  let f;
+  if($('autoChk').checked){const a=autoFactor();f=a.f;$('sizeRange').value=f.toFixed(1);$('sizeWhy').textContent=a.why;}
+  else{f=+$('sizeRange').value;$('sizeWhy').textContent='(manual)';}
+  $('sizeVal').textContent=f.toFixed(1)+'x';
+  alertMsg(`Found the moon ✓ (${Math.round(DET.r*2)} px wide in a ${SRC.width} px photo)`);
+
+  const out=mk(SRC.width,SRC.height),ox_=out.getContext('2d');ox_.drawImage(SRC,0,0);
+  const {cx,cy,r}=DET,R=r*1.4;
+  let S=Math.round(2*R*f);S=Math.min(S,4096);const fr=S/(2*R);
+  const m=mk(S,S),mx=m.getContext('2d',{willReadFrequently:true});
+  mx.imageSmoothingEnabled=true;mx.imageSmoothingQuality='high';
+  mx.drawImage(SRC,cx-R,cy-R,2*R,2*R,0,0,S,S);
+  if($('warmChk').checked){mx.globalCompositeOperation='soft-light';mx.fillStyle='rgba(255,150,60,0.55)';mx.fillRect(0,0,S,S);mx.globalCompositeOperation='source-over';}
+  if($('cleanChk').checked){const md=mx.getImageData(0,0,S,S);sharpenData(md.data,S,S,Math.max(1,Math.round(fr*0.8)),1.1,1);mx.putImageData(md,0,0);}
+  // soft round edge
+  mx.globalCompositeOperation='destination-in';
+  const g=mx.createRadialGradient(S/2,S/2,r*fr*1.0,S/2,S/2,R*fr);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');
+  mx.fillStyle=g;mx.fillRect(0,0,S,S);mx.globalCompositeOperation='source-over';
+  const ox=Math.round(cx-S/2),oy=Math.round(cy-S/2);
+  // keep the foreground in front: hide moon pixels where the original is clearly darker than the sky around the moon
+  const sky=skyRef(cx,cy,r);
+  if($('fgChk').checked&&sky>18){
+    const md=mx.getImageData(0,0,S,S),dd=md.data;
+    const sx0=Math.max(0,ox),sy0=Math.max(0,oy),sx1=Math.min(SRC.width,ox+S),sy1=Math.min(SRC.height,oy+S);
+    if(sx1>sx0&&sy1>sy0){
+      const od=SCTX.getImageData(sx0,sy0,sx1-sx0,sy1-sy0).data,ow=sx1-sx0;
+      for(let py=0;py<S;py++){const gy=oy+py;if(gy<sy0||gy>=sy1)continue;for(let px=0;px<S;px++){const gx=ox+px;if(gx<sx0||gx>=sx1)continue;
+        const oi=((gy-sy0)*ow+(gx-sx0))*4;const k=smooth(sky*0.4,sky*0.72,lumOf(od,oi));if(k<1)dd[(py*S+px)*4+3]*=k;}}
+      mx.putImageData(md,0,0);
+    }
+  }
+  ox_.drawImage(m,ox,oy);
+  if($('cleanChk').checked&&CLEANINFO){const od=ox_.getImageData(0,0,out.width,out.height);sharpenData(od.data,out.width,out.height,1,0.6,Math.max(1.5,CLEANINFO.after*2.5));ox_.putImageData(od,0,0);
+    const cut=Math.max(0,Math.round((1-CLEANINFO.after/Math.max(CLEANINFO.before,0.01))*100));
+    setClean(`✨ Crystal-clear check passed: grain cut ${cut}%${CLEANINFO.merged>1?`, ${CLEANINFO.merged} shots merged`:''}, moon sharpened`,CLEANINFO.after<=1.2?'b-good':'b-wait');
+    if(CLEANINFO.after>1.2)$('cleanMsg').textContent+=' (some grain left; merge 3–5 shots for cleaner)';}
+  else if(!$('cleanChk').checked)setClean('Clean-up off: showing the photo as shot','b-off');
+  out.toBlob(b=>{OUT_BLOB=b;showView();},'image/jpeg',0.92);
+}
+function showView(){
+  const img=$('outImg');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);
+  if(showBefore){SRC.toBlob(b=>{const u=URL.createObjectURL(b);img.dataset.url=u;img.src=u;},'image/jpeg',0.9);}
+  else if(OUT_BLOB){const u=URL.createObjectURL(OUT_BLOB);img.dataset.url=u;img.src=u;}
+}
+$('vAfter').onclick=()=>{showBefore=false;$('vAfter').classList.add('on');$('vBefore').classList.remove('on');showView();};
+$('vBefore').onclick=()=>{showBefore=true;$('vBefore').classList.add('on');$('vAfter').classList.remove('on');showView();};
+$('autoChk').onchange=()=>SRC&&render();
+let rt=null;$('sizeRange').oninput=()=>{$('autoChk').checked=false;$('sizeVal').textContent=(+$('sizeRange').value).toFixed(1)+'x';clearTimeout(rt);rt=setTimeout(()=>SRC&&render(),180);};
+$('fgChk').onchange=()=>SRC&&render();
+$('warmChk').onchange=()=>SRC&&render();
+
+/* ---------- Save (Claude's download prompt opens the iPhone share sheet → Save Image) ---------- */
+let DL=null;
+const canShareFiles=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File([new Blob(['x'],{type:'image/jpeg'})],'t.jpg',{type:'image/jpeg'})]}));}catch(e){return false;}};
+if(canShareFiles())$('saveBtn').classList.remove('hidden');
+(async()=>{try{if(window.claude&&claude.use){DL=await claude.use('downloads');if(DL)$('saveBtn').classList.remove('hidden');}}catch(e){}})();
+$('saveBtn').onclick=async()=>{
+  if(!OUT_BLOB)return;
+  const n=new Date(),stamp=n.toISOString().slice(0,16).replace(/[:T]/g,'-'),name=`moon-minds-eye-${stamp}.jpg`;
+  if(DL){try{await DL.save({filename:name,data:OUT_BLOB});return;}catch(e){if(e&&e.code==='declined')return;}}
+  if(canShareFiles()){try{await navigator.share({files:[new File([OUT_BLOB],name,{type:'image/jpeg'})]});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  $('saveHint').innerHTML='Saving isn’t available here. Touch and hold the picture, then tap <b>Save to Photos</b>.';
+};
+
+/* ---------- Start ---------- */
+(function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}tryGps();})();
+</script>
+</body>
+</html>
