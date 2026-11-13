@@ -1,146 +1,226 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v0.6 — 2026-11-13 1:40 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v0.7 — 2026-11-13 2:20 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Moon Eye">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#05070f">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <title>Moon Mind's Eye</title>
 <style>
-  :root{--bg:#0b1020;--card:#141b31;--line:#26304f;--ink:#eef1fa;--mute:#9aa4c4;--gold:#f5c76b;--good:#7be0a6;--warn:#ffb36b}
+  :root{--bg:#05070f;--ink:#eef1fa;--mute:#b4bddb;--line:rgba(160,180,255,.18);--glass:rgba(22,30,58,.62);--gold:#f5c76b;--good:#7be0a6;--warn:#ffb36b}
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#1d2850,var(--bg));color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh}
-  main{max-width:640px;margin:0 auto;padding:18px 14px 60px}
-  h1{font-size:24px;margin:4px 0 2px;letter-spacing:.2px}
-  .sub{color:var(--mute);margin:0 0 16px;font-size:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 14px}
-  .card h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:0 0 10px;font-weight:600}
-  .big{font-size:30px;font-weight:700}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .stat{flex:1 1 120px;background:#0f1528;border:1px solid var(--line);border-radius:12px;padding:10px}
-  .stat b{display:block;font-size:20px}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+  body{background:radial-gradient(520px 360px at 75% 8%,rgba(70,92,170,.33),transparent 70%),radial-gradient(420px 320px at 5% 70%,rgba(120,70,150,.2),transparent 70%),var(--bg);background-attachment:fixed}
+  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+  main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 110px)}
+  h1,h2,.sg{font-family:"Space Grotesk",Inter,sans-serif}
+  .glass{background:var(--glass);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+  .card{border-radius:22px;padding:16px;margin:0 0 14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mute);margin:0 0 10px;font-weight:600}
+  .top{display:flex;align-items:center;justify-content:space-between;margin:6px 0 4px}
+  .round{width:48px;height:48px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;color:var(--ink);cursor:pointer}
+  .pill{padding:8px 16px;border-radius:20px;font:600 15px "Space Grotesk",sans-serif}
+  .date{font-size:12px;color:var(--mute);text-align:center;margin-top:4px}
+  .hero{display:flex;justify-content:center;margin:8px 0 0}
+  #moonHero{width:min(72vw,280px);height:min(72vw,280px);filter:drop-shadow(0 0 26px rgba(255,246,220,.22))}
+  .phase{text-align:center;margin:10px 0 16px}
+  .phase h1{font-size:30px;margin:0;letter-spacing:-.4px}
+  .phase p{margin:4px 0 0;color:var(--mute);font-size:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}
+  .stat{border-radius:18px;padding:12px}
+  .stat b{display:block;font:700 22px "Space Grotesk",sans-serif}
   .stat span{color:var(--mute);font-size:12px}
-  .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:600;font-size:14px;margin-top:10px}
-  .b-good{background:#163a2a;color:var(--good)} .b-wait{background:#3a2a16;color:var(--warn)} .b-off{background:#232a44;color:var(--mute)}
-  button,.btn{appearance:none;border:0;border-radius:12px;padding:13px 16px;font:600 16px/1 inherit;font-family:inherit;cursor:pointer;background:#26304f;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px}
-  .primary{background:var(--gold);color:#1a1400;width:100%;font-size:18px;padding:16px}
-  .wide{width:100%}
-  input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0f1528;color:var(--ink);font-size:16px}
+  .zone{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .z-good{color:#8ff0bf}.z-good .dot{background:var(--good);box-shadow:0 0 0 5px rgba(123,224,166,.18)}
+  .z-wait{color:#ffcf9e}.z-wait .dot{background:var(--warn);box-shadow:0 0 0 5px rgba(255,179,107,.16)}
+  .z-off{color:var(--mute)}.z-off .dot{background:#6d7799}
+  #pathSvg{display:block;width:100%;height:auto;margin-top:8px}
+  .row2{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--mute);margin-top:4px}
+  button,.btn{appearance:none;font-family:inherit;cursor:pointer}
+  .btn{border-radius:27px;min-height:54px;padding:0 18px;display:flex;align-items:center;justify-content:center;gap:10px;font:600 16px "Space Grotesk",sans-serif;color:var(--ink);width:100%}
+  .gold{background:var(--gold);color:#1a1400;border:0;font-weight:700;font-size:17px}
+  .mt{margin-top:10px}
+  input[type=text]{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(10,14,30,.7);color:var(--ink);font-size:16px}
   input[type=file]{display:none}
   .mute{color:var(--mute);font-size:14px}
-  .tips{margin:8px 0 0;padding-left:20px;color:var(--mute);font-size:14px}
-  .tips li{margin:4px 0}
-  canvas,img.out{width:100%;height:auto;border-radius:12px;display:block;background:#000}
-  #arrowWrap{display:none;text-align:center;margin-top:12px}
-  #arrow{font-size:64px;line-height:1;display:inline-block;transition:transform .15s linear;color:var(--gold)}
-  .slider{width:100%}
-  label.chk{display:flex;gap:8px;align-items:center;font-size:15px;margin:8px 0}
+  .small{font-size:12px}
+  .tips{margin:10px 0 0;padding-left:20px;color:var(--mute);font-size:14px}.tips li{margin:4px 0}
+  canvas,img.out{max-width:100%}
+  #preview{width:100%;height:auto;border-radius:16px;display:block;background:#000}
+  #arrowWrap{display:none;text-align:center;margin:0 0 14px}
+  #arrow{display:inline-block;transition:transform .15s linear;color:var(--gold)}
+  .slider{width:100%;accent-color:var(--gold)}
+  label.chk{display:flex;gap:10px;align-items:center;font-size:15px;margin:10px 0}
+  label.chk input{width:20px;height:20px;accent-color:var(--gold)}
   .hidden{display:none!important}
-  .seg{display:flex;background:#0f1528;border:1px solid var(--line);border-radius:12px;padding:3px;margin:10px 0}
-  .seg button{flex:1;background:transparent;padding:10px}
-  .seg button.on{background:#26304f}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:600;font-size:14px}
+  .b-good{background:rgba(22,58,42,.85);color:var(--good)} .b-wait{background:rgba(58,42,22,.85);color:var(--warn)} .b-off{background:rgba(35,42,68,.85);color:var(--mute)}
+  /* live camera */
+  .live{position:relative;border-radius:22px;overflow:hidden;background:#000}
+  #liveView{display:block;width:100%;height:auto}
+  .live .badge{position:absolute;left:10px;top:10px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  #liveAlt{position:absolute;right:10px;top:10px;padding:8px 10px;border-radius:14px;font:600 13px Inter,sans-serif}
+  .chips{display:flex;justify-content:center;gap:8px;margin:12px 0 4px}
+  .chip{width:46px;height:46px;border-radius:50%;font:600 13px Inter,sans-serif;color:var(--ink);padding:0}
+  .chip.on{background:var(--gold);color:#1a1400;border-color:transparent;font-weight:700}
+  .shutterRow{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:10px}
+  #shutter{width:84px;height:84px;border-radius:50%;padding:0;background:#fff;border:6px solid var(--gold);box-shadow:0 0 0 4px rgba(0,0,0,.35),0 0 30px rgba(245,199,107,.35)}
+  /* compare */
+  .cmp{position:relative;border-radius:20px;overflow:hidden;background:#000;border:1px solid var(--line)}
+  .cmp img{display:block;width:100%;height:auto}
+  #origImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;clip-path:inset(0 50% 0 0)}
+  #cmpLine{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;pointer-events:none}
+  #cmpKnob{position:absolute;top:50%;left:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4);pointer-events:none}
+  #cmpRange{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:ew-resize}
+  .tag{position:absolute;top:10px;padding:6px 10px;border-radius:14px;font:600 12px Inter,sans-serif;pointer-events:none}
+  .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin-top:10px;font-size:14px}
+  .checks div{display:flex;align-items:center;gap:6px}
+  /* tab bar */
+  .tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(520px,calc(100% - 36px));display:flex;gap:6px;padding:6px;border-radius:30px;z-index:5}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 6px;border:0;border-radius:22px;font:600 12px Inter,sans-serif;background:transparent;color:#c3cbe6}
+  .tab.on{background:rgba(190,205,255,.92);color:#0b1230}
+  #about{margin:6px 0 14px}
 </style>
 </head>
 <body>
+<canvas id="stars" aria-hidden="true"></canvas>
 <main>
-  <h1>🌕 Moon Mind's Eye</h1>
-  <p class="sub">Photograph the low moon the way your brain sees it, not the pin dot your camera records.</p>
+  <div class="top">
+    <button id="aboutBtn" class="round glass" aria-label="About the moon illusion"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
+    <div><div class="pill glass" id="topTitle">Tonight</div><div class="date" id="topDate"></div></div>
+    <button id="compassBtn" class="round glass" aria-label="Point me to the moon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff8a7a" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg><span id="dirShort" style="font:600 10px Inter,sans-serif">–</span></button>
+  </div>
+  <div id="about" class="card glass hidden">
+    <h2>The moon illusion</h2>
+    <p class="mute" style="margin:0">A low moon looks huge because your brain compares it with trees and buildings, but it is really the same size all night. A phone's wide lens records the true size, so it comes out as a dot. This app finds the moon and enlarges it to match what your eyes felt.</p>
+  </div>
 
-  <!-- MOON NOW -->
-  <section class="card">
-    <h2>Tonight's moon</h2>
-    <div id="locMsg" class="mute">Finding your location…</div>
+  <!-- ===== MOON TAB ===== -->
+  <section id="view-moon">
+    <div class="hero"><canvas id="moonHero" width="560" height="560" aria-label="Tonight's moon"></canvas></div>
+    <div class="phase"><h1 id="phaseName">Moon</h1><p id="moonSub">Finding your location…</p></div>
+    <div id="locMsg" class="card glass hidden"></div>
+    <div id="arrowWrap" class="card glass"><div id="arrow"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg></div><div id="arrowMsg" class="mute"></div></div>
     <div id="moonInfo" class="hidden">
-      <div class="row">
-        <div class="stat"><b id="alt">–</b><span>height above horizon</span></div>
-        <div class="stat"><b id="dir">–</b><span>direction to face</span></div>
-        <div class="stat"><b id="phase">–</b><span>lit (phase)</span></div>
+      <div class="grid3">
+        <div class="stat glass"><b id="alt">–</b><span>Above horizon</span></div>
+        <div class="stat glass"><b id="dir">–</b><span id="dirLbl">Heading</span></div>
+        <div class="stat glass"><b id="phase">–</b><span>Lit</span></div>
       </div>
-      <div id="status" class="badge b-off">–</div>
-      <p id="windowMsg" class="mute" style="margin:10px 0 0"></p>
-      <button id="compassBtn" class="wide" style="margin-top:12px">🧭 Point me to the moon</button>
-      <div id="arrowWrap"><div id="arrow">⬆︎</div><div id="arrowMsg" class="mute"></div></div>
+      <div class="card glass">
+        <div id="status" class="zone z-off"><span class="dot"></span><span id="statusTxt">–</span></div>
+        <svg id="pathSvg" viewBox="0 0 320 76" aria-label="The moon's height over the next 24 hours"></svg>
+        <div class="row2"><span id="windowMsg"></span><span id="nextEvent"></span></div>
+      </div>
+      <button id="goLive" class="btn gold"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1400" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Open live camera</button>
     </div>
-    <div style="margin-top:12px">
-      <label class="btn wide" for="gpsCam">📍 Get my location from a quick photo</label>
+  </section>
+
+  <!-- ===== CAMERA TAB ===== -->
+  <section id="view-camera" class="hidden">
+    <div class="card glass">
+      <h2>Live camera</h2>
+      <button id="liveStart" class="btn gold">Start live camera</button>
+      <div id="liveMsg" class="mute mt"></div>
+      <div id="liveWrap" class="hidden">
+        <div class="live">
+          <canvas id="liveView"></canvas>
+          <div id="liveBadge" class="badge b-off">Looking for the moon…</div>
+          <div id="liveAlt" class="glass hidden"></div>
+        </div>
+        <video id="liveVid" playsinline muted autoplay style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></video>
+        <div class="chips" id="zoomChips"></div>
+        <div class="mute small" style="text-align:center">Zoom <b id="zoomVal">1.0x</b> <span id="zoomKind"></span></div>
+        <input id="zoomRange" class="slider hidden" type="range" min="1" max="5" step="0.1" value="1">
+        <label class="chk"><input id="livePrevChk" type="checkbox" checked> Show the mind's-eye moon live</label>
+        <div class="shutterRow"><button id="shutter" aria-label="Take picture"></button></div>
+        <p class="mute" style="text-align:center;margin:8px 0 0">Hold steady: 4 frames merge into one crisp shot</p>
+        <p class="mute small" style="text-align:center;margin:4px 0 0">Wrong light picked? Tap the moon on the screen.</p>
+        <button id="liveStop" class="btn glass mt">Stop camera</button>
+      </div>
+    </div>
+
+    <div class="card glass">
+      <h2>Or use the iPhone Camera</h2>
+      <label class="btn glass" for="camIn">Take moon photo</label>
+      <input id="camIn" type="file" accept="image/*" capture="environment">
+      <label class="btn glass mt" for="libIn">Pick from Photos (3–5 shots is best)</label>
+      <input id="libIn" type="file" accept="image/*" multiple>
+      <ul class="tips">
+        <li>Get trees, rooftops or a skyline in the frame. The foreground makes the moon feel big.</li>
+        <li>Use <b>2x, 3x or 5x</b> zoom if your iPhone has it.</li>
+        <li><b>Touch and hold the moon</b> to lock focus, then drag the brightness slider <b>down</b> until the moon shows detail.</li>
+        <li>Take <b>3–5 shots in a row</b> and pick them all. The app merges them to remove grain.</li>
+      </ul>
+    </div>
+
+    <section id="work" class="card glass hidden">
+      <h2>Your mind's-eye moon</h2>
+      <div id="cleanMsg" class="badge b-wait" style="margin:0 0 10px">Polishing…</div>
+      <div class="cmp" id="cmpBox">
+        <img id="outImg" class="out" alt="Mind's-eye moon photo">
+        <img id="origImg" alt="What the camera saw">
+        <div id="cmpLine"></div>
+        <div id="cmpKnob"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0b1230" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l-5 6 5 6M15 6l5 6-5 6"/></svg></div>
+        <span class="tag glass" style="left:10px">Camera saw</span>
+        <span class="tag" style="right:10px;background:var(--gold);color:#1a1400">Mind's eye</span>
+        <input id="cmpRange" type="range" min="0" max="100" value="50" aria-label="Compare before and after">
+      </div>
+      <div id="checks" class="checks hidden"></div>
+      <div class="mt">
+        <div class="row2" style="font-size:14px;color:var(--ink)"><span class="mute">Mind's-eye size</span><span><b id="sizeVal">2.5x</b> <span id="sizeWhy" class="mute small"></span></span></div>
+        <input id="sizeRange" class="slider" type="range" min="1" max="4" step="0.1" value="2.5">
+      </div>
+      <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
+      <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front</label>
+      <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
+      <label class="chk"><input id="cleanChk" type="checkbox" checked> Crystal-clear clean-up</label>
+      <details class="mt"><summary class="mute">Moon not found? Tap it here</summary>
+        <p id="detMsg" class="mute"></p>
+        <canvas id="preview"></canvas>
+      </details>
+      <div style="display:flex;gap:10px" class="mt">
+        <button id="retakeBtn" class="btn glass" style="flex:1">Retake</button>
+        <button id="saveBtn" class="btn gold hidden" style="flex:1.6">Save to Photos</button>
+      </div>
+      <p class="mute small" id="saveHint">Or touch and hold the picture, then tap <b>Save to Photos</b>. This is an edited picture: the moon is enlarged to match how it looks to the eye.</p>
+    </section>
+  </section>
+
+  <!-- ===== LOCATION TAB ===== -->
+  <section id="view-loc" class="hidden">
+    <div class="card glass">
+      <h2>Your location</h2>
+      <p id="locNow" class="sg" style="font-size:20px;margin:0 0 12px">Not set yet</p>
+      <button id="locGps" class="btn gold">Use my phone's location</button>
+      <label class="btn glass mt" for="gpsCam">Get it from a quick photo</label>
       <input id="gpsCam" type="file" accept="image/*" capture="environment">
-      <label class="btn wide" for="gpsLib" style="margin-top:8px">📍 Use a photo already taken here</label>
+      <label class="btn glass mt" for="gpsLib">Use a photo already taken here</label>
       <input id="gpsLib" type="file" accept="image/*">
-      <div id="gpsResult" class="hidden" style="margin-top:10px;padding:12px;border-radius:12px;font-size:15px"></div>
-      <p class="mute" style="font-size:12px;margin:6px 0 0">Take a photo of anything. Only the GPS numbers are kept; the photo is thrown away and never saved.</p>
+      <div id="gpsResult" class="hidden" style="margin-top:10px;padding:12px;border-radius:14px;font-size:15px"></div>
+      <p class="mute small" style="margin:8px 0 0">From a photo, only the GPS numbers are kept; the photo is thrown away and never saved.</p>
     </div>
-    <details id="locBox" style="margin-top:12px">
-      <summary class="mute">Set location manually</summary>
-      <p class="mute">Type latitude, longitude (e.g. <i>29.95, -90.07</i>). In Apple Maps, drop a pin and tap it to see these numbers.</p>
-      <div class="row"><input id="locInput" type="text" placeholder="lat, lon" inputmode="text"><button id="locSave" class="wide">Save location</button></div>
-      <button id="locGps" class="wide" style="margin-top:8px">📍 Try my phone's location again</button>
-    </details>
-  </section>
-
-  <!-- LIVE CAMERA -->
-  <section class="card" id="liveCard">
-    <h2>Live camera</h2>
-    <button id="liveStart" class="primary">🎥 Start live camera</button>
-    <div id="liveMsg" class="mute" style="margin-top:8px"></div>
-    <div id="liveWrap" class="hidden">
-      <div style="position:relative">
-        <canvas id="liveView"></canvas>
-        <div id="liveBadge" class="badge b-off" style="position:absolute;left:10px;top:0">Looking for the moon…</div>
-      </div>
-      <video id="liveVid" playsinline muted autoplay style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></video>
-      <div class="mute" style="margin-top:10px">Zoom: <b id="zoomVal">1.0x</b> <span id="zoomKind"></span></div>
-      <input id="zoomRange" class="slider" type="range" min="1" max="5" step="0.1" value="1">
-      <label class="chk"><input id="livePrevChk" type="checkbox" checked> Show the mind's-eye moon live</label>
-      <div style="display:flex;justify-content:center;margin-top:6px">
-        <button id="shutter" aria-label="Take picture" style="width:78px;height:78px;border-radius:50%;background:#fff;border:6px solid var(--gold);padding:0"></button>
-      </div>
-      <p class="mute" style="text-align:center;margin:6px 0 0">Hold steady: one tap takes 4 quick frames and merges them.</p>
-      <p class="mute" style="font-size:12px;text-align:center;margin:4px 0 0">Wrong light picked? Tap the moon on the screen.</p>
-      <button id="liveStop" class="wide" style="margin-top:10px">Stop camera</button>
+    <div class="card glass" id="locBox">
+      <h2>Type it in</h2>
+      <p class="mute" style="margin-top:0">Latitude, longitude (e.g. <i>29.95, -90.07</i>). In Apple Maps, tap the blue dot to see these numbers.</p>
+      <input id="locInput" type="text" placeholder="lat, lon" inputmode="text">
+      <button id="locSave" class="btn glass mt">Save location</button>
     </div>
-  </section>
-
-  <!-- SHOOT -->
-  <section class="card">
-    <h2>Or use the iPhone Camera</h2>
-    <label class="btn primary" for="camIn">📷 Take moon photo</label>
-    <input id="camIn" type="file" accept="image/*" capture="environment">
-    <label class="btn wide" for="libIn" style="margin-top:8px">🖼️ Pick from Photos (pick 3–5 shots for the cleanest result)</label>
-    <input id="libIn" type="file" accept="image/*" multiple>
-    <ul class="tips">
-      <li>Get trees, rooftops or a skyline in the frame. The foreground is what makes the moon feel big.</li>
-      <li>Use <b>2x, 3x or 5x</b> zoom if your iPhone has it. The app enlarges more from there.</li>
-      <li><b>Touch and hold the moon</b> on screen to lock focus, then drag the ☀︎ slider <b>down</b> until the moon stops being a white blob.</li>
-      <li>Lean on something steady and take <b>3–5 shots in a row</b>. Picking them all lets the app merge them, which removes the most grain.</li>
-    </ul>
-  </section>
-
-  <!-- RESULT -->
-  <section id="work" class="card hidden">
-    <h2>Your mind's-eye picture</h2>
-    <div id="cleanMsg" class="badge b-wait" style="margin:0 0 10px">✨ Polishing…</div>
-    <p id="detMsg" class="mute" style="margin-top:0"></p>
-    <canvas id="preview"></canvas>
-    <p class="mute">Wrong spot? <b>Tap the moon</b> in the picture above.</p>
-
-    <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
-    <input id="sizeRange" class="slider" type="range" min="1" max="4" step="0.1" value="2.5">
-    <div class="mute">Moon size: <b id="sizeVal">2.5x</b> <span id="sizeWhy"></span></div>
-    <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front of the moon</label>
-    <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
-    <label class="chk"><input id="cleanChk" type="checkbox" checked> ✨ Crystal-clear clean-up (remove grain, sharpen)</label>
-
-    <div class="seg"><button id="vAfter" class="on">Mind's eye</button><button id="vBefore">Camera saw</button></div>
-    <img id="outImg" class="out" alt="Mind's-eye moon photo">
-    <button id="saveBtn" class="primary hidden" style="margin-top:12px">⬇︎ Save photo</button>
-    <p class="mute" id="saveHint">Or touch and hold the picture, then tap <b>Save to Photos</b>.</p>
-    <p class="mute" style="font-size:12px">This is an edited picture: the moon is enlarged to match how it looks to the eye.</p>
   </section>
 </main>
+
+<nav class="tabbar glass" aria-label="Main">
+  <button class="tab on" data-view="moon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Moon</span></button>
+  <button class="tab" data-view="camera"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
+  <button class="tab" data-view="loc"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.3"/></svg><span>Location</span></button>
+</nav>
 
 <script>
 /* ---------- Moon & sun math (adapted from the SunCalc formulas, accurate to about 1°) ---------- */
@@ -154,9 +234,9 @@ const ST=(d,lw)=>rad*(280.16+360.9856235*d)-lw;
 function sunCoords(d){const M=rad*(357.5291+0.98560028*d);const C=rad*(1.9148*Math.sin(M)+0.02*Math.sin(2*M)+0.0003*Math.sin(3*M));const L=M+C+rad*102.9372+Math.PI;return{dec:DEC(L,0),ra:RA(L,0)};}
 function moonCoords(d){const L=rad*(218.316+13.176396*d),M=rad*(134.963+13.064993*d),F=rad*(93.272+13.229350*d);const l=L+rad*6.289*Math.sin(M),b=rad*5.128*Math.sin(F);return{ra:RA(l,b),dec:DEC(l,b),dist:385001-20905*Math.cos(M)};}
 function refr(h){if(h<0)h=0;return 0.0002967/Math.tan(h+0.00312536/(h+0.08901179));}
-function moonPos(t,lat,lng){const lw=rad*-lng,p=rad*lat,d=toDays(t),c=moonCoords(d),H=ST(d,lw)-c.ra;let h=ALT(H,p,c.dec);h+=refr(h);return{alt:h/rad,bearing:(AZ(H,p,c.dec)/rad+540)%360};}
+function moonPos(t,lat,lng){const lw=rad*-lng,p=rad*lat,d=toDays(t),c=moonCoords(d),H=ST(d,lw)-c.ra;let h=ALT(H,p,c.dec);h+=refr(h);const q=Math.atan2(Math.sin(H),Math.tan(p)*Math.cos(c.dec)-Math.sin(c.dec)*Math.cos(H));return{alt:h/rad,bearing:(AZ(H,p,c.dec)/rad+540)%360,q};}
 function sunAlt(t,lat,lng){const lw=rad*-lng,p=rad*lat,d=toDays(t),s=sunCoords(d),H=ST(d,lw)-s.ra;return ALT(H,p,s.dec)/rad;}
-function moonIllum(t){const d=toDays(t),s=sunCoords(d),m=moonCoords(d),sd=149598000;const phi=Math.acos(Math.sin(s.dec)*Math.sin(m.dec)+Math.cos(s.dec)*Math.cos(m.dec)*Math.cos(s.ra-m.ra));const inc=Math.atan2(sd*Math.sin(phi),m.dist-sd*Math.cos(phi));const ang=Math.atan2(Math.cos(s.dec)*Math.sin(s.ra-m.ra),Math.sin(s.dec)*Math.cos(m.dec)-Math.cos(s.dec)*Math.sin(m.dec)*Math.cos(s.ra-m.ra));return{fraction:(1+Math.cos(inc))/2,waxing:ang<0};}
+function moonIllum(t){const d=toDays(t),s=sunCoords(d),m=moonCoords(d),sd=149598000;const phi=Math.acos(Math.sin(s.dec)*Math.sin(m.dec)+Math.cos(s.dec)*Math.cos(m.dec)*Math.cos(s.ra-m.ra));const inc=Math.atan2(sd*Math.sin(phi),m.dist-sd*Math.cos(phi));const ang=Math.atan2(Math.cos(s.dec)*Math.sin(s.ra-m.ra),Math.sin(s.dec)*Math.cos(m.dec)-Math.cos(s.dec)*Math.sin(m.dec)*Math.cos(s.ra-m.ra));return{fraction:(1+Math.cos(inc))/2,waxing:ang<0,angle:ang,inc};}
 const compass=b=>["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(b/22.5)%16];
 const fmtT=t=>t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
 const fmtDay=t=>{const n=new Date();const tm=new Date(n);tm.setDate(n.getDate()+1);if(t.toDateString()===n.toDateString())return'today';if(t.toDateString()===tm.toDateString())return'tomorrow';return t.toLocaleDateString([], {weekday:'long'});};
@@ -169,7 +249,7 @@ let LOC=null, MOON=null;
 const $=id=>document.getElementById(id);
 function store(k,v){try{v===undefined?null:localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function setLoc(lat,lng,src){LOC={lat,lng};$('locMsg').textContent=`Location: ${lat.toFixed(2)}, ${lng.toFixed(2)} (${src})`;store('mme-loc',lat+','+lng);updateMoon();}
+function setLoc(lat,lng,src){LOC={lat,lng};$('locMsg').classList.add('hidden');$('locNow').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)}`;$('locNow').title=src;store('mme-loc',lat+','+lng);updateMoon();}
 function tryGps(){
   if(!navigator.geolocation){gpsFail();return;}
   try{navigator.geolocation.getCurrentPosition(p=>setLoc(p.coords.latitude,p.coords.longitude,'phone GPS'),gpsFail,{enableHighAccuracy:false,timeout:8000,maximumAge:6e5});}catch(e){gpsFail();}
@@ -177,27 +257,51 @@ function tryGps(){
 function gpsFail(){
   const s=load('mme-loc');
   if(s){const[a,b]=s.split(',').map(Number);setLoc(a,b,'saved');return;}
-  $('locMsg').innerHTML='Location isn’t available here. Open <b>Set location manually</b> below.';
-  $('locBox').open=true;
+  $('locMsg').innerHTML='<b>Where are you?</b> Your location isn’t set yet, so the moon can’t be placed in your sky.<button class="btn gold mt" type="button" onclick="goTab(\'loc\')">Set my location</button>';
+  $('locMsg').classList.remove('hidden');$('moonSub').textContent='Set your location to see tonight’s sky';
 }
-$('locSave').onclick=()=>{const m=$('locInput').value.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);if(!m){$('locMsg').textContent='Couldn’t read that. Use the format: 29.95, -90.07';return;}const a=+m[1],b=+m[2];if(Math.abs(a)>90||Math.abs(b)>180){$('locMsg').textContent='Those numbers are out of range.';return;}setLoc(a,b,'manual');$('locBox').open=false;};
-$('locGps').onclick=tryGps;
+$('locSave').onclick=()=>{const m=$('locInput').value.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);if(!m){gpsShow('bad','Couldn’t read that. Use the format: 29.95, -90.07');return;}const a=+m[1],b=+m[2];if(Math.abs(a)>90||Math.abs(b)>180){gpsShow('bad','Those numbers are out of range.');return;}setLoc(a,b,'manual');gpsShow('ok',`✅ <b>Location saved</b><br>${a.toFixed(4)}, ${b.toFixed(4)}`);};
+$('locGps').onclick=()=>{gpsShow('busy','⏳ Asking your phone for its location…');navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{setLoc(p.coords.latitude,p.coords.longitude,'phone GPS');gpsShow('ok',`✅ <b>Location found and saved</b><br>${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`);},e=>gpsShow('bad',e&&e.code===1?'❌ Location permission is off. In iPhone <b>Settings → Privacy &amp; Security → Location Services → Safari Websites</b>, choose <b>While Using the App</b>, then try again.':'❌ Couldn’t get your location. Try again outside, or type it in below.'),{enableHighAccuracy:true,timeout:12000,maximumAge:0}):gpsShow('bad','❌ This browser can’t share location. Type it in below.');};
 
+const DIRNAME={N:'north',NNE:'north-northeast',NE:'northeast',ENE:'east-northeast',E:'east',ESE:'east-southeast',SE:'southeast',SSE:'south-southeast',S:'south',SSW:'south-southwest',SW:'southwest',WSW:'west-southwest',W:'west',WNW:'west-northwest',NW:'northwest',NNW:'north-northwest'};
+function phaseName(il){const f=il.fraction;if(f<0.03)return'New Moon';if(f>0.97)return'Full Moon';if(Math.abs(f-0.5)<0.04)return il.waxing?'First Quarter':'Last Quarter';return(il.waxing?'Waxing ':'Waning ')+(f<0.5?'Crescent':'Gibbous');}
+let LAST_HERO=0;
 function updateMoon(){
-  if(!LOC)return;
-  const now=new Date();MOON=moonPos(now,LOC.lat,LOC.lng);const il=moonIllum(now);const s=sunAlt(now,LOC.lat,LOC.lng);
+  const now=new Date();const il=moonIllum(now);
+  $('phaseName').textContent=phaseName(il);
+  if(!LOC){drawHero(il);return;}
+  MOON=moonPos(now,LOC.lat,LOC.lng);const s=sunAlt(now,LOC.lat,LOC.lng);
+  const later=moonPos(new Date(now.getTime()+6e5),LOC.lat,LOC.lng),rising=later.alt>MOON.alt;
+  drawHero(il,MOON.q);
   $('moonInfo').classList.remove('hidden');
   $('alt').textContent=MOON.alt.toFixed(1)+'°';
-  $('dir').textContent=`${compass(MOON.bearing)} ${Math.round(MOON.bearing)}°`;
-  $('phase').textContent=Math.round(il.fraction*100)+'%'+(il.waxing?' ↑':' ↓');
-  const st=$('status');
-  if(MOON.alt<0){st.className='badge b-off';st.textContent='Below the horizon';}
-  else if(MOON.alt<=10){st.className='badge b-good';st.textContent=s<2?'🔥 Illusion zone, shoot now!':'Low, but the sky is still bright';}
-  else if(MOON.alt<=20){st.className='badge b-wait';st.textContent='Getting high; the illusion is fading';}
-  else{st.className='badge b-off';st.textContent='Too high for the big-moon look';}
+  $('dir').textContent=Math.round(MOON.bearing)+'°';$('dirLbl').textContent=compass(MOON.bearing)+' heading';
+  $('dirShort').textContent=compass(MOON.bearing);
+  $('phase').textContent=Math.round(il.fraction*100)+'%';
+  $('moonSub').textContent=MOON.alt<0?`Below the horizon, ${rising?'rising':'setting'} toward the ${DIRNAME[compass(MOON.bearing)]}`:`${rising?'Rising':'Setting'} in the ${DIRNAME[compass(MOON.bearing)]}`;
+  const st=$('status'),tx=$('statusTxt');
+  if(MOON.alt<0){st.className='zone z-off';tx.textContent='Below the horizon';}
+  else if(MOON.alt<=10){st.className='zone '+(s<2?'z-good':'z-wait');tx.textContent=s<2?'Illusion zone · shoot now':'Low, but the sky is still bright';}
+  else if(MOON.alt<=20){st.className='zone z-wait';tx.textContent='Getting high; the illusion is fading';}
+  else{st.className='zone z-off';tx.textContent='Too high for the big-moon look';}
   const w=findWindow(LOC.lat,LOC.lng);
-  $('windowMsg').textContent=!w?'No low-moon window in the next 2 days.':
-    (w.start-now<6e4?`Best window: now until ${w.end?fmtT(w.end):'later'}.`:`Next best window: ${fmtDay(w.start)} ${fmtT(w.start)}${w.end?'–'+fmtT(w.end):''}.`)+(il.fraction<0.15?' (Thin moon this week; a fuller moon looks best.)':'');
+  $('windowMsg').textContent=!w?'No low-moon window in 2 days':(w.start-now<6e4?`Best window: now – ${w.end?fmtT(w.end):'later'}`:`Best window: ${fmtDay(w.start)==='today'?'':fmtDay(w.start)+' '}${fmtT(w.start)}${w.end?' – '+fmtT(w.end):''}`);
+  drawPath(LOC.lat,LOC.lng,now);
+}
+/* Small chart: the moon's height over the next 24 hours, with the illusion window shaded */
+function drawPath(lat,lng,now){
+  const N=72,W=320,H=76,pts=[];
+  for(let k=0;k<=N;k++){const t=new Date(now.getTime()+k*20*60000);pts.push({t,a:moonPos(t,lat,lng).alt,s:sunAlt(t,lat,lng)});}
+  const ymin=-20,ymax=Math.max(30,...pts.map(p=>p.a))+4,X=k=>k/N*W,Yp=a=>4+(1-(Math.max(ymin,a)-ymin)/(ymax-ymin))*(H-12);
+  let shade='',runStart=null;
+  pts.forEach((p,k)=>{const ok=p.a>=0&&p.a<=10&&p.s<2;if(ok&&runStart===null)runStart=k;if((!ok||k===N)&&runStart!==null){shade+=`<rect x="${X(runStart).toFixed(1)}" y="0" width="${Math.max(2,X(k)-X(runStart)).toFixed(1)}" height="${H-8}" fill="#7be0a6" opacity="0.14" rx="4"></rect>`;runStart=null;}});
+  const d=pts.map((p,k)=>(k?'L':'M')+X(k).toFixed(1)+' '+Yp(p.a).toFixed(1)).join(' ');
+  let ev='';for(let k=1;k<=N;k++){const a=pts[k-1].a,b=pts[k].a;if(a<0&&b>=0){ev='Moonrise '+fmtT(pts[k].t);break;}if(a>=0&&b<0){ev='Moonset '+fmtT(pts[k].t);break;}}
+  $('nextEvent').textContent=ev;
+  $('pathSvg').innerHTML=shade+`<line x1="0" y1="${Yp(0).toFixed(1)}" x2="${W}" y2="${Yp(0).toFixed(1)}" stroke="#5a6690" stroke-width="1"></line>`+
+    `<path d="${d}" fill="none" stroke="#8fa2df" stroke-width="1.6" stroke-dasharray="3 4"></path>`+
+    `<circle cx="${X(0)}" cy="${Yp(pts[0].a).toFixed(1)}" r="5.5" fill="#f5e7c4"></circle>`+
+    `<text x="2" y="${H-1}" fill="#9aa4c4" font-size="9" font-family="Inter">Now</text><text x="${W/2-10}" y="${H-1}" fill="#9aa4c4" font-size="9" font-family="Inter">+12h</text><text x="${W-24}" y="${H-1}" fill="#9aa4c4" font-size="9" font-family="Inter">+24h</text>`;
 }
 setInterval(updateMoon,60000);
 
@@ -254,6 +358,7 @@ $('gpsCam').onchange=onGpsPhoto;$('gpsLib').onchange=onGpsPhoto;
 /* ---------- Compass arrow (works where the phone shares motion data) ---------- */
 let heading=null;
 $('compassBtn').onclick=async()=>{
+  goTab('moon');
   try{
     if(typeof DeviceOrientationEvent!=='undefined'&&DeviceOrientationEvent.requestPermission){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw 0;}
     window.addEventListener('deviceorientation',e=>{heading=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);drawArrow();});
@@ -261,7 +366,7 @@ $('compassBtn').onclick=async()=>{
     setTimeout(()=>{if(heading==null)compassFail();},2500);
   }catch(e){compassFail();}
 };
-function compassFail(){$('arrowWrap').style.display='block';$('arrow').textContent='🧭';$('arrow').style.transform='none';$('arrowMsg').innerHTML=MOON?`The compass isn't available in this view. Open the iPhone <b>Compass</b> app and face <b>${compass(MOON.bearing)} (${Math.round(MOON.bearing)}°)</b>, then look ${MOON.alt.toFixed(0)}° up.`:'The compass isn\'t available in this view.';}
+function compassFail(){$('arrowWrap').style.display='block';$('arrow').style.transform='none';$('arrowMsg').innerHTML=MOON?`The compass isn't available in this view. Open the iPhone <b>Compass</b> app and face <b>${compass(MOON.bearing)} (${Math.round(MOON.bearing)}°)</b>, then look ${MOON.alt.toFixed(0)}° up.`:'The compass isn\'t available in this view.';}
 function drawArrow(){if(heading==null||!MOON)return;const diff=((MOON.bearing-heading)+540)%360-180;$('arrow').style.transform=`rotate(${diff}deg)`;$('arrowMsg').textContent=Math.abs(diff)<8?`You're facing it. Look ${MOON.alt.toFixed(0)}° up.`:`Turn ${diff>0?'right':'left'} ${Math.abs(Math.round(diff))}°`;}
 
 /* ---------- Image pipeline ---------- */
@@ -285,7 +390,7 @@ async function onFiles(files){
 const NW=i=>i.naturalWidth||i.width, NH=i=>i.naturalHeight||i.height;
 async function processSources(imgs){
   $('work').classList.remove('hidden');$('work').scrollIntoView({behavior:'smooth'});
-  setClean(imgs.length>1?`✨ Merging ${imgs.length} shots…`:'✨ Polishing…');await tick();
+  setClean(imgs.length>1?`Merging ${imgs.length} shots…`:'Polishing…');await tick();
   const first=imgs[0],maxSide=3600,sc=Math.min(1,maxSide/Math.max(NW(first),NH(first)));
   const W=Math.round(NW(first)*sc),H=Math.round(NH(first)*sc);
   imgs=imgs.filter(i=>Math.abs(NW(i)*sc-W)<2&&Math.abs(NH(i)*sc-H)<2);
@@ -294,12 +399,12 @@ async function processSources(imgs){
   if(imgs.length>1){merged=await stack(imgs,W,H);}
   SRC=mk(W,H);SCTX=SRC.getContext('2d',{willReadFrequently:true});SCTX.drawImage(RAW,0,0);
   CLEANINFO=null;
-  if($('cleanChk').checked){setClean('✨ Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,W,H);CLEANINFO.merged=merged;}
+  if($('cleanChk').checked){setClean('Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,W,H);CLEANINFO.merged=merged;}
   DET=detect(null);render();
 }
 $('camIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
 $('libIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
-$('cleanChk').onchange=async()=>{if(!RAW)return;SCTX.drawImage(RAW,0,0);CLEANINFO=null;if($('cleanChk').checked){setClean('✨ Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,SRC.width,SRC.height);}DET=detect(DET?{x:DET.cx,y:DET.cy}:null);render();};
+$('cleanChk').onchange=async()=>{if(!RAW)return;SCTX.drawImage(RAW,0,0);CLEANINFO=null;if($('cleanChk').checked){setClean('Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,SRC.width,SRC.height);}DET=detect(DET?{x:DET.cx,y:DET.cy}:null);render();};
 
 /* Merge shots: line each one up on the moon, then average. Grain is random, so it cancels out. */
 async function stack(imgs,W,H){
@@ -310,7 +415,7 @@ async function stack(imgs,W,H){
     let dx=0,dy=0;if(ref){const d=detect(ref?{x:ref.cx,y:ref.cy}:null,tmp);if(!d||Math.hypot(d.cx-ref.cx,d.cy-ref.cy)>W*0.08)continue;dx=Math.round(ref.cx-d.cx);dy=Math.round(ref.cy-d.cy);}
     const p=tx.getImageData(0,0,W,H).data;
     for(let y=0;y<H;y++){const sy=y-dy;if(sy<0||sy>=H)continue;for(let x=0;x<W;x++){const sx=x-dx;if(sx<0||sx>=W)continue;const si=(sy*W+sx)*4,di=y*W+x;sum[di*3]+=p[si];sum[di*3+1]+=p[si+1];sum[di*3+2]+=p[si+2];cnt[di]++;}}
-    used++;setClean(`✨ Merging shots… ${k+1}/${imgs.length}`);await tick();
+    used++;setClean(`Merging shots… ${k+1}/${imgs.length}`);await tick();
   }
   if(used<2)return 1;
   const o=RAWCTX.getImageData(0,0,W,H),od=o.data;
@@ -353,7 +458,7 @@ function sharpenData(d,w,h,r,amount,thr){
 async function cleanUp(ctx,w,h){
   const before=denoisePass(ctx,w,h,1.0);await tick();
   let after=measureGrain(ctx,w,h),passes=1;
-  while(after>1.2&&passes<3){setClean(`✨ Still a bit grainy, cleaning again (${passes+1})…`);await tick();denoisePass(ctx,w,h,1+0.5*passes);after=measureGrain(ctx,w,h);passes++;}
+  while(after>1.2&&passes<3){setClean(`Still a bit grainy, cleaning again (${passes+1})…`);await tick();denoisePass(ctx,w,h,1+0.5*passes);after=measureGrain(ctx,w,h);passes++;}
   return{before,after,passes};
 }
 
@@ -423,7 +528,7 @@ $('preview').addEventListener('click',e=>{
 
 function render(){
   drawPreview();
-  if(!DET){if(CLEANINFO)setClean('✨ Clean-up done','b-good');alertMsg('I couldn’t find the moon. Tap it in the picture below.');$('outImg').removeAttribute('src');$('saveBtn').classList.add('hidden');return;}
+  if(!DET){if(CLEANINFO)setClean('Clean-up done','b-good');alertMsg('I couldn’t find the moon. Tap it in the picture below.');document.querySelector('#work details').open=true;$('outImg').removeAttribute('src');$('saveBtn').classList.add('hidden');return;}
   let f;
   if($('autoChk').checked){const a=autoFactor();f=a.f;$('sizeRange').value=f.toFixed(1);$('sizeWhy').textContent=a.why;}
   else{f=+$('sizeRange').value;$('sizeWhy').textContent='(manual)';}
@@ -458,18 +563,21 @@ function render(){
   ox_.drawImage(m,ox,oy);
   if($('cleanChk').checked&&CLEANINFO){const od=ox_.getImageData(0,0,out.width,out.height);sharpenData(od.data,out.width,out.height,1,0.6,Math.max(1.5,CLEANINFO.after*2.5));ox_.putImageData(od,0,0);
     const cut=Math.max(0,Math.round((1-CLEANINFO.after/Math.max(CLEANINFO.before,0.01))*100));
-    setClean(`✨ Crystal-clear check passed: grain cut ${cut}%${CLEANINFO.merged>1?`, ${CLEANINFO.merged} shots merged`:''}, moon sharpened`,CLEANINFO.after<=1.2?'b-good':'b-wait');
-    if(CLEANINFO.after>1.2)$('cleanMsg').textContent+=' (some grain left; merge 3–5 shots for cleaner)';}
-  else if(!$('cleanChk').checked)setClean('Clean-up off: showing the photo as shot','b-off');
+    const ok=CLEANINFO.after<=1.2;setClean(ok?'Crystal-clear check passed':'Cleaned · some grain left',ok?'b-good':'b-wait');
+    const tick_='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7be0a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%','Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');
+    $('checks').innerHTML=items.map(t=>`<div>${tick_}${t}</div>`).join('');$('checks').classList.remove('hidden');
+    if(!ok)$('cleanMsg').textContent+=' (merge 3–5 shots for cleaner)';}
+  else if(!$('cleanChk').checked){setClean('Clean-up off: showing the photo as shot','b-off');$('checks').classList.add('hidden');}
   out.toBlob(b=>{OUT_BLOB=b;showView();},'image/jpeg',0.92);
 }
+function setImg(img,blob){if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);const u=URL.createObjectURL(blob);img.dataset.url=u;img.src=u;}
 function showView(){
-  const img=$('outImg');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);
-  if(showBefore){SRC.toBlob(b=>{const u=URL.createObjectURL(b);img.dataset.url=u;img.src=u;},'image/jpeg',0.9);}
-  else if(OUT_BLOB){const u=URL.createObjectURL(OUT_BLOB);img.dataset.url=u;img.src=u;}
+  if(OUT_BLOB)setImg($('outImg'),OUT_BLOB);
+  if(SRC)SRC.toBlob(b=>b&&setImg($('origImg'),b),'image/jpeg',0.9);
 }
-$('vAfter').onclick=()=>{showBefore=false;$('vAfter').classList.add('on');$('vBefore').classList.remove('on');showView();};
-$('vBefore').onclick=()=>{showBefore=true;$('vBefore').classList.add('on');$('vAfter').classList.remove('on');showView();};
+$('cmpRange').oninput=()=>{const v=+$('cmpRange').value;$('origImg').style.clipPath=`inset(0 ${100-v}% 0 0)`;$('cmpLine').style.left=v+'%';$('cmpKnob').style.left=v+'%';};
+$('retakeBtn').onclick=()=>{if(STREAM){$('liveWrap').scrollIntoView({behavior:'smooth'});}else{$('camIn').click();}};
 $('autoChk').onchange=()=>SRC&&render();
 let rt=null;$('sizeRange').oninput=()=>{$('autoChk').checked=false;$('sizeVal').textContent=(+$('sizeRange').value).toFixed(1)+'x';clearTimeout(rt);rt=setTimeout(()=>SRC&&render(),180);};
 $('fgChk').onchange=()=>SRC&&render();
@@ -491,10 +599,12 @@ async function startLive(){
   if(caps.zoom&&caps.zoom.max>1){LIVE.hwZoom=caps.zoom;zr.min=caps.zoom.min||1;zr.max=Math.min(caps.zoom.max,10);zr.value=caps.zoom.min||1;$('zoomKind').textContent='(lens zoom)';}
   else{LIVE.hwZoom=null;zr.min=1;zr.max=5;zr.value=1;$('zoomKind').textContent='(digital zoom)';}
   $('zoomVal').textContent=(+zr.value).toFixed(1)+'x';
+  buildChips(+zr.min,+zr.max);
   $('liveStart').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
   LIVE.det=null;cancelAnimationFrame(LIVE.raf);liveLoop();
 }
 function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');}
+function buildChips(min,max){const box=$('zoomChips');box.innerHTML='';[1,2,3,5].filter(z=>z>=min&&z<=max).forEach(z=>{const b=document.createElement('button');b.type='button';b.className='chip glass'+(z===1?' on':'');b.textContent=z+'x';b.onclick=()=>{$('zoomRange').value=z;$('zoomRange').dispatchEvent(new Event('input'));[...box.children].forEach(c=>c.classList.toggle('on',c===b));};box.appendChild(b);});}
 $('liveStart').onclick=startLive;$('liveStop').onclick=stopLive;
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&STREAM)stopLive();});
 let zt=null;
@@ -518,6 +628,7 @@ function liveLoop(){
     if(d&&d.r*2<sw*0.5){LIVE.det={cx:d.cx/sw,cy:d.cy/sh,r:d.r/sw};LIVE.miss=0;LIVE.hint=null;}
     else if(++LIVE.miss>4)LIVE.det=null;
   }
+  const la=$('liveAlt');if(MOON){la.classList.remove('hidden');la.textContent=MOON.alt.toFixed(0)+'° up';}
   const b=$('liveBadge');
   if(!LIVE.det){b.className='badge b-off';b.textContent=MOON&&MOON.alt<0?'The moon is below the horizon right now':'Looking for the moon… tap it if you see it';return;}
   const D=LIVE.det,cx=D.cx*dw,cy=D.cy*dh,r=Math.max(2,D.r*dw),f=autoFactorFor(c.w,D.r*c.w).f;
@@ -560,6 +671,43 @@ $('saveBtn').onclick=async()=>{
   if(canShareFiles()){try{await navigator.share({files:[new File([OUT_BLOB],name,{type:'image/jpeg'})]});return;}catch(e){if(e&&e.name==='AbortError')return;}}
   $('saveHint').innerHTML='Saving isn’t available here. Touch and hold the picture, then tap <b>Save to Photos</b>.';
 };
+
+/* ---------- Tabs ---------- */
+function goTab(v){['moon','camera','loc'].forEach(k=>$('view-'+k).classList.toggle('hidden',k!==v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
+  $('topTitle').textContent=v==='moon'?'Tonight':v==='camera'?'Camera':'Location';window.scrollTo({top:0});}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>goTab(t.dataset.view));
+$('goLive').onclick=()=>{goTab('camera');startLive();};
+$('aboutBtn').onclick=()=>$('about').classList.toggle('hidden');
+$('topDate').textContent=new Date().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+/* ---------- Starfield background ---------- */
+function drawStars(){const c=$('stars'),dpr=Math.min(2,window.devicePixelRatio||1),w=innerWidth,h=innerHeight;c.width=w*dpr;c.height=h*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const n=Math.round(w*h/2600);for(let i=0;i<n;i++){const x=rnd()*w,y=rnd()*h,r=rnd()<0.92?0.4+rnd()*0.8:1.4+rnd()*0.6,o=0.3+rnd()*0.7;
+    if(r>1.3){g.fillStyle='rgba(188,208,255,0.12)';g.beginPath();g.arc(x,y,r*3,0,7);g.fill();}g.fillStyle=`rgba(255,255,255,${o.toFixed(2)})`;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+  g.strokeStyle='rgba(159,182,255,0.28)';g.lineWidth=1;[[[.08,.14],[.2,.11],[.29,.16],[.38,.14],[.49,.18]],[[.74,.08],[.82,.13],[.9,.11],[.95,.17]]].forEach(L=>{g.beginPath();L.forEach(([px,py],k)=>{k?g.lineTo(px*w,py*h):g.moveTo(px*w,py*h);});g.stroke();L.forEach(([px,py])=>{g.fillStyle='#dfe7ff';g.beginPath();g.arc(px*w,py*h,1.8,0,7);g.fill();});});}
+drawStars();addEventListener('resize',()=>{clearTimeout(window._st);window._st=setTimeout(drawStars,200);});
+
+/* ---------- Realistic moon: our own near-side maps, lit to tonight's real phase and tilt ---------- */
+const TEX={ready:false};
+function loadTex(){return Promise.all(['moon-albedo.png','moon-normal.png'].map(src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;}))).then(([a,n])=>{
+  const S=a.width,c=mk(S,S),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(a,0,0);TEX.A=x.getImageData(0,0,S,S).data;x.clearRect(0,0,S,S);x.drawImage(n,0,0);TEX.N=x.getImageData(0,0,S,S).data;TEX.S=S;TEX.ready=true;});}
+function renderMoon(cv,{inc,chi,rot=0,tint=null,earth=0.03}){
+  const S=TEX.S,off=mk(S,S),ox=off.getContext('2d'),img=ox.createImageData(S,S),d=img.data,A=TEX.A,N=TEX.N;
+  const si=Math.sin(inc),Lx=-Math.sin(chi)*si,Ly=Math.cos(chi)*si,Lz=Math.cos(inc),c=(S-1)/2,R=S/2-3,tr=tint||[1,1,1];
+  for(let y=0,p=0;y<S;y++){const Y=(c-y)/R;for(let x=0;x<S;x++,p+=4){const a=N[p+3];if(!a)continue;
+    const X=(x-c)/R,Z=Math.sqrt(Math.max(0,1-X*X-Y*Y)),al=A[p]/255,nx=N[p]/127.5-1,ny=N[p+1]/127.5-1,nz=N[p+2]/127.5-1;
+    const mu0=nx*Lx+ny*Ly+nz*Lz,mu=Math.max(nz,0.02),m0=mu0<0?0:mu0>1?1:mu0;
+    let I=al*(0.65*(2*m0/(m0+mu+1e-6))+0.35*m0)*smooth(-0.02,0.03,mu0);
+    const sph=X*Lx+Y*Ly+Z*Lz;I*=smooth(-0.04,0.02,sph+0.6*(mu0-sph));I+=earth*al*(1-smooth(-0.05,0.05,sph));
+    I=Math.pow(Math.min(1,I*1.14),0.95)*255;d[p]=I*tr[0];d[p+1]=I*tr[1];d[p+2]=I*tr[2];d[p+3]=a;}}
+  ox.putImageData(img,0,0);const g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);g.save();g.translate(cv.width/2,cv.height/2);g.rotate(rot);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(off,-cv.width/2,-cv.height/2,cv.width,cv.height);g.restore();
+}
+function drawHero(il,q){if(!TEX.ready)return;const key=il.fraction.toFixed(3)+'|'+(q==null?'n':q.toFixed(2));if(key===LAST_HERO)return;LAST_HERO=key;
+  // chi = bright-limb position angle (from north, eastward); q = parallactic angle → tilt as seen from your spot
+  const chi=il.angle, rot=(q==null?0:q);
+  renderMoon($('moonHero'),{inc:il.inc,chi,rot,earth:0.03});}
+loadTex().then(()=>{LAST_HERO=0;updateMoon();}).catch(()=>{});
 
 /* ---------- Start ---------- */
 (function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}tryGps();})();
