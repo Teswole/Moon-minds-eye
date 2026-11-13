@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v0.8 — 2026-11-13 2:10 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v0.9 — 2026-11-13 2:55 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#05070f">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <title>Moon Mind's Eye</title>
 <style>
   :root{--bg:#05070f;--ink:#eef1fa;--mute:#b4bddb;--line:rgba(160,180,255,.18);--glass:rgba(22,30,58,.62);--gold:#f5c76b;--good:#7be0a6;--warn:#ffb36b}
@@ -87,6 +87,16 @@
   .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 6px;border:0;border-radius:22px;font:600 12px Inter,sans-serif;background:transparent;color:#c3cbe6}
   .tab.on{background:rgba(190,205,255,.92);color:#0b1230}
   #about{margin:6px 0 14px}
+  /* antique compass */
+  .cmpsWidget{display:flex;align-items:center;gap:14px;width:100%;text-align:left;color:var(--ink);border-radius:22px;padding:12px 14px;margin:0 0 14px}
+  .cmpsWidget svg{flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+  .cmpsWidget b{font:700 18px "Space Grotesk",sans-serif;display:block}
+  #compassSheet{position:fixed;inset:0;z-index:20;background:rgba(3,5,12,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overflow-y:auto;padding:calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 24px)}
+  #compassSheet .inner{max-width:460px;margin:0 auto;text-align:center}
+  #bigCompass{display:block;margin:14px auto 6px;width:min(86vw,380px);height:min(86vw,380px);filter:drop-shadow(0 10px 30px rgba(0,0,0,.6))}
+  .cmpsHead{font:700 34px "Cinzel",serif;letter-spacing:1px;color:#f1d79a;margin:4px 0 0}
+  .cmpsTurn{font:600 17px "Space Grotesk",sans-serif;margin:6px 0 0}
+  .calib{text-align:left;margin-top:14px}
 </style>
 </head>
 <body>
@@ -107,13 +117,16 @@
     <div class="hero"><canvas id="moonHero" width="560" height="560" aria-label="Tonight's moon"></canvas></div>
     <div class="phase"><h1 id="phaseName">Moon</h1><p id="moonSub">Finding your location…</p></div>
     <div id="locMsg" class="card glass hidden"></div>
-    <div id="arrowWrap" class="card glass"><div id="arrow"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 11l7-7 7 7"/></svg></div><div id="arrowMsg" class="mute"></div></div>
     <div id="moonInfo" class="hidden">
       <div class="grid3">
         <div class="stat glass"><b id="alt">–</b><span>Above horizon</span></div>
         <div class="stat glass"><b id="dir">–</b><span id="dirLbl">Heading</span></div>
         <div class="stat glass"><b id="phase">–</b><span>Lit</span></div>
       </div>
+      <button id="cmpsWidget" class="cmpsWidget glass" type="button" aria-label="Open the compass">
+        <svg id="smallCompass" width="96" height="96" viewBox="0 0 200 200" aria-hidden="true"></svg>
+        <span><b id="cmpsSmallHead">Compass</b><span id="cmpsSmallTxt" class="mute">Tap to find the moon</span></span>
+      </button>
       <div class="card glass">
         <div id="status" class="zone z-off"><span class="dot"></span><span id="statusTxt">–</span></div>
         <svg id="pathSvg" viewBox="0 0 320 76" aria-label="The moon's height over the next 24 hours"></svg>
@@ -228,6 +241,30 @@
   </section>
 </main>
 
+<div id="compassSheet" class="hidden" role="dialog" aria-label="Antique compass">
+  <div class="inner">
+    <div class="top">
+      <button id="cmpsClose" class="round glass" aria-label="Close compass"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="pill glass">Compass</div>
+      <button id="cmpsCalBtn" class="round glass" aria-label="Calibrate compass"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+    </div>
+    <svg id="bigCompass" viewBox="0 0 200 200" role="img" aria-label="Compass dial with the moon's direction"></svg>
+    <div class="cmpsHead" id="cmpsHead">— —</div>
+    <div class="cmpsTurn" id="cmpsTurn">Hold your phone flat, top pointing ahead</div>
+    <div class="mute small" id="cmpsAcc" style="margin-top:6px"></div>
+    <div id="cmpsCal" class="card glass calib hidden">
+      <h2>Calibrate</h2>
+      <p class="mute" style="margin:0 0 10px"><b>Best: line it up on the moon.</b> Point the top of your phone straight at the moon, then tap the button.</p>
+      <button id="calMoon" class="btn gold">Line up on the moon</button>
+      <p class="mute small" id="calMoonMsg" style="margin:6px 0 0"></p>
+      <div class="row2 mt" style="font-size:14px;color:var(--ink)"><span class="mute">Fine-tune</span><b id="calVal">0°</b></div>
+      <input id="calRange" class="slider" type="range" min="-30" max="30" step="1" value="0" aria-label="Compass fine-tune in degrees">
+      <button id="calReset" class="btn glass mt">Reset calibration</button>
+      <p class="mute small" style="margin:10px 0 0">Still jumpy? Wave the phone in a slow figure-8 a few times, and stay away from cars, metal railings and magnets.</p>
+    </div>
+  </div>
+</div>
+
 <nav class="tabbar glass" aria-label="Main">
   <button class="tab on" data-view="moon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Moon</span></button>
   <button class="tab" data-view="camera"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
@@ -299,6 +336,7 @@ function updateMoon(){
   const w=findWindow(LOC.lat,LOC.lng);
   $('windowMsg').textContent=!w?'No low-moon window in 2 days':(w.start-now<6e4?`Best window: now – ${w.end?fmtT(w.end):'later'}`:`Best window: ${fmtDay(w.start)==='today'?'':fmtDay(w.start)+' '}${fmtT(w.start)}${w.end?' – '+fmtT(w.end):''}`);
   drawPath(LOC.lat,LOC.lng,now);
+  if(typeof placeMoonMarker==='function')placeMoonMarker();
   if(!window._alertsShown){window._alertsShown=1;refreshAlertList();}
 }
 /* Small chart: the moon's height over the next 24 hours, with the illusion window shaded */
@@ -368,19 +406,96 @@ async function onGpsPhoto(e){
 }
 $('gpsCam').onchange=onGpsPhoto;$('gpsLib').onchange=onGpsPhoto;
 
-/* ---------- Compass arrow (works where the phone shares motion data) ---------- */
-let heading=null;
-$('compassBtn').onclick=async()=>{
-  goTab('moon');
+/* ---------- Antique compass (with moon marker and calibration) ---------- */
+let heading=null,headSm=null,cmpsOn=false,cmpsAcc=null,CAL=0;
+try{CAL=+(localStorage.getItem('mme-cal')||0)||0;}catch(e){}
+const angDiff=(a,b)=>((a-b)+540)%360-180;
+function compassSVG(p){
+  let ticks='',nums='';
+  for(let d=0;d<360;d+=5){const big=d%30===0,mid=d%10===0,r1=84,r2=big?73:mid?77:80;const a=d*rad;
+    ticks+=`<line x1="${(100+r1*Math.sin(a)).toFixed(2)}" y1="${(100-r1*Math.cos(a)).toFixed(2)}" x2="${(100+r2*Math.sin(a)).toFixed(2)}" y2="${(100-r2*Math.cos(a)).toFixed(2)}" stroke="#4a3112" stroke-width="${big?1.6:0.8}"></line>`;
+    if(big&&d%90!==0)nums+=`<text x="${(100+66*Math.sin(a)).toFixed(2)}" y="${(100-66*Math.cos(a)+2.6).toFixed(2)}" font-size="7.5" fill="#5a3d17" text-anchor="middle" font-family="Cinzel,serif" transform="rotate(${d} ${(100+66*Math.sin(a)).toFixed(2)} ${(100-66*Math.cos(a)).toFixed(2)})">${d}</text>`;}
+  const pt=(ang,r)=>`${(100+r*Math.sin(ang*rad)).toFixed(2)},${(100-r*Math.cos(ang*rad)).toFixed(2)}`;
+  let rose='';
+  [45,135,225,315].forEach(a=>{rose+=`<polygon points="100,100 ${pt(a-9,14)} ${pt(a,40)}" fill="#c9a96a"></polygon><polygon points="100,100 ${pt(a+9,14)} ${pt(a,40)}" fill="#6b4c22"></polygon>`;});
+  [0,90,180,270].forEach(a=>{rose+=`<polygon points="100,100 ${pt(a-11,15)} ${pt(a,58)}" fill="${a===0?'#9b2a1c':'#3b2a14'}"></polygon><polygon points="100,100 ${pt(a+11,15)} ${pt(a,58)}" fill="${a===0?'#d1513b':'#d9bf86'}"></polygon>`;});
+  const L=[['N',0,'#9b2a1c'],['E',90,'#3b2a14'],['S',180,'#3b2a14'],['W',270,'#3b2a14']].map(([t,d,c])=>`<text x="${pt(d,64).split(',')[0]}" y="${(+pt(d,64).split(',')[1]+5).toFixed(2)}" font-size="15" font-weight="700" fill="${c}" text-anchor="middle" font-family="Cinzel,serif" transform="rotate(${d} ${pt(d,64).replace(',',' ')})">${t}</text>`).join('');
+  return `<defs>
+<radialGradient id="${p}brass" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#fbe3a1"></stop><stop offset="0.45" stop-color="#c8963f"></stop><stop offset="0.8" stop-color="#8a5f22"></stop><stop offset="1" stop-color="#4f3410"></stop></radialGradient>
+<radialGradient id="${p}paper" cx="45%" cy="40%" r="70%"><stop offset="0" stop-color="#f6ead0"></stop><stop offset="0.7" stop-color="#e2cc9b"></stop><stop offset="1" stop-color="#b8955c"></stop></radialGradient>
+<filter id="${p}age" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3"></feTurbulence><feColorMatrix type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.28  0 0 0 0 0.1  0 0 0 0.9 -0.32"></feColorMatrix></filter>
+<clipPath id="${p}face"><circle cx="100" cy="100" r="85"></circle></clipPath>
+<radialGradient id="${p}moon" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffffff"></stop><stop offset="1" stop-color="#cfd6e6"></stop></radialGradient>
+</defs>
+<circle cx="100" cy="100" r="99" fill="url(#${p}brass)" stroke="#3a260b" stroke-width="1.2"></circle>
+<circle cx="100" cy="100" r="92" fill="none" stroke="#fbe3a1" stroke-opacity="0.45" stroke-width="0.8"></circle>
+<circle cx="100" cy="100" r="88" fill="#2b1d0b"></circle>
+<g id="${p}dial">
+<g clip-path="url(#${p}face)"><circle cx="100" cy="100" r="85" fill="url(#${p}paper)"></circle><rect x="15" y="15" width="170" height="170" filter="url(#${p}age)" opacity="0.55"></rect></g>
+<circle cx="100" cy="100" r="84" fill="none" stroke="#4a3112" stroke-width="1"></circle><circle cx="100" cy="100" r="71" fill="none" stroke="#4a3112" stroke-width="0.6"></circle>
+${ticks}${nums}<circle cx="100" cy="100" r="44" fill="none" stroke="#6b4c22" stroke-width="0.6" stroke-dasharray="1.5 2.5"></circle>${rose}${L}
+<g id="${p}moonMk"><circle cx="100" cy="22" r="9" fill="#fff6dc" opacity="0.35"></circle><circle cx="100" cy="22" r="6" fill="url(#${p}moon)" stroke="#2b1d0b" stroke-width="1"></circle></g>
+</g>
+<circle cx="100" cy="100" r="8" fill="url(#${p}brass)" stroke="#3a260b" stroke-width="1"></circle><circle cx="98" cy="98" r="2.5" fill="#fff3c8" opacity="0.8"></circle>
+<polygon points="100,3 106,15 94,15" fill="#d1513b" stroke="#3a260b" stroke-width="0.8"></polygon>
+<ellipse cx="78" cy="62" rx="52" ry="30" fill="#ffffff" opacity="0.10" transform="rotate(-25 78 62)"></ellipse>`;
+}
+$('smallCompass').innerHTML=compassSVG('s');$('bigCompass').innerHTML=compassSVG('b');
+function placeMoonMarker(){const vis=!!MOON;['s','b'].forEach(p=>{const m=document.getElementById(p+'moonMk');if(!m)return;m.style.display=vis?'':'none';if(vis)m.setAttribute('transform',`rotate(${MOON.bearing.toFixed(1)} 100 100)`);});}
+function drawCompass(){
+  placeMoonMarker();
+  const h=headSm;
+  ['s','b'].forEach(p=>{const d=document.getElementById(p+'dial');if(d)d.setAttribute('transform',`rotate(${h==null?0:(-h).toFixed(1)} 100 100)`);});
+  if(h==null)return;
+  const hh=(h+360)%360,headTxt=`${Math.round(hh)}° ${compass(hh)}`;
+  $('cmpsHead').textContent=headTxt;$('cmpsSmallHead').textContent='Facing '+headTxt;
+  let turn='';
+  if(MOON){const df=angDiff(MOON.bearing,hh);
+    if(MOON.alt<-1)turn=`The moon is below the horizon toward the ${DIRNAME[compass(MOON.bearing)]}`;
+    else turn=Math.abs(df)<5?`You're facing the moon. Look ${Math.max(0,MOON.alt).toFixed(0)}° up`:`Turn ${df>0?'right':'left'} ${Math.abs(Math.round(df))}° to face the moon`;}
+  else turn='Set your location to show the moon';
+  $('cmpsTurn').textContent=turn;$('cmpsSmallTxt').textContent=turn;
+  $('cmpsAcc').textContent=cmpsAcc==null?(CAL?`Calibrated ${CAL>0?'+':''}${CAL}°`:''):(cmpsAcc<0||cmpsAcc>25?'Compass needs calibrating: wave the phone in a figure-8, or tap the calibrate button':`Accuracy ±${Math.round(cmpsAcc)}°`)+(CAL&&cmpsAcc!=null?` · calibrated ${CAL>0?'+':''}${CAL}°`:'');
+}
+function onOrient(e){
+  let h=null;
+  if(e.webkitCompassHeading!=null){h=e.webkitCompassHeading;cmpsAcc=e.webkitCompassAccuracy;}
+  else if(e.absolute&&e.alpha!=null)h=360-e.alpha;
+  if(h==null)return;
+  heading=(h+CAL+360)%360;
+  headSm=headSm==null?heading:(headSm+0.25*angDiff(heading,headSm)+360)%360;
+}
+async function startCompass(){
+  if(cmpsOn)return true;
   try{
-    if(typeof DeviceOrientationEvent!=='undefined'&&DeviceOrientationEvent.requestPermission){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw 0;}
-    window.addEventListener('deviceorientation',e=>{heading=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);drawArrow();});
-    $('arrowWrap').style.display='block';$('arrowMsg').textContent='Hold the phone flat and turn…';
+    if(typeof DeviceOrientationEvent==='undefined')throw 0;
+    if(DeviceOrientationEvent.requestPermission){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw 0;}
+    window.addEventListener('deviceorientation',onOrient);window.addEventListener('deviceorientationabsolute',onOrient);
+    cmpsOn=true;
+    (function loop(){drawCompass();requestAnimationFrame(loop);})();
     setTimeout(()=>{if(heading==null)compassFail();},2500);
-  }catch(e){compassFail();}
+    return true;
+  }catch(e){compassFail();return false;}
+}
+function compassFail(){
+  const msg=MOON?`The compass isn't available here. Face ${DIRNAME[compass(MOON.bearing)]} (${Math.round(MOON.bearing)}°) and look ${Math.max(0,MOON.alt).toFixed(0)}° up.`:'The compass isn’t available here. Open the app in Safari and allow motion access.';
+  $('cmpsTurn').textContent=msg;$('cmpsSmallTxt').textContent=msg;placeMoonMarker();
+}
+function openCompass(){goTab('moon');$('compassSheet').classList.remove('hidden');document.body.style.overflow='hidden';placeMoonMarker();startCompass();}
+$('cmpsWidget').onclick=openCompass;$('compassBtn').onclick=openCompass;
+$('cmpsClose').onclick=()=>{$('compassSheet').classList.add('hidden');document.body.style.overflow='';};
+$('cmpsCalBtn').onclick=()=>$('cmpsCal').classList.toggle('hidden');
+function setCal(v){CAL=Math.max(-90,Math.min(90,Math.round(v)));try{localStorage.setItem('mme-cal',CAL);}catch(e){}$('calRange').value=Math.max(-30,Math.min(30,CAL));$('calVal').textContent=(CAL>0?'+':'')+CAL+'°';headSm=null;}
+$('calRange').oninput=()=>setCal(+$('calRange').value);
+$('calReset').onclick=()=>{setCal(0);$('calMoonMsg').textContent='Calibration cleared.';};
+$('calMoon').onclick=()=>{
+  if(!MOON){$('calMoonMsg').textContent='Set your location first so the app knows where the moon is.';return;}
+  if(MOON.alt<0){$('calMoonMsg').textContent='The moon is below the horizon right now. Use the fine-tune slider, or try again when it’s up.';return;}
+  if(heading==null){$('calMoonMsg').textContent='The compass isn’t reading yet. Allow motion access and try again.';return;}
+  const raw=(heading-CAL+360)%360;setCal(angDiff(MOON.bearing,raw));
+  $('calMoonMsg').textContent=`Done. The compass now matches the moon (${CAL>0?'+':''}${CAL}°).`;
 };
-function compassFail(){$('arrowWrap').style.display='block';$('arrow').style.transform='none';$('arrowMsg').innerHTML=MOON?`The compass isn't available in this view. Open the iPhone <b>Compass</b> app and face <b>${compass(MOON.bearing)} (${Math.round(MOON.bearing)}°)</b>, then look ${MOON.alt.toFixed(0)}° up.`:'The compass isn\'t available in this view.';}
-function drawArrow(){if(heading==null||!MOON)return;const diff=((MOON.bearing-heading)+540)%360-180;$('arrow').style.transform=`rotate(${diff}deg)`;$('arrowMsg').textContent=Math.abs(diff)<8?`You're facing it. Look ${MOON.alt.toFixed(0)}° up.`:`Turn ${diff>0?'right':'left'} ${Math.abs(Math.round(diff))}°`;}
+setCal(CAL);
 
 /* ---------- Image pipeline ---------- */
 let SRC=null, SCTX=null, DET=null, OUT_BLOB=null, showBefore=false;
