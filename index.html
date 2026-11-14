@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.8 — 2026-11-14 4:05 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.9 — 2026-11-14 4:15 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -184,6 +184,12 @@
     <div class="card glass">
       <h2>Live camera</h2>
       <button id="liveStart" class="btn gold">Start live camera</button>
+      <ul class="tips" id="liveTips">
+        <li>Tap <b>Start live camera</b> and choose <b>Allow</b> when asked.</li>
+        <li>Point at the moon. A gold ring or <b>Moon locked ✓</b> means it found it. If it picks a streetlight, <b>tap the moon</b>.</li>
+        <li>Use <b>2x, 3x or 5x</b> and keep trees or rooftops in the frame.</li>
+        <li><b>Hold still</b> for about 2 seconds. When the moon is low, the photo takes itself, or tap the round button any time.</li>
+      </ul>
       <div id="liveMsg" class="mute mt"></div>
       <div id="liveWrap" class="hidden">
         <div class="live">
@@ -1010,11 +1016,11 @@ async function startLive(){
   else{LIVE.hwZoom=null;zr.min=1;zr.max=5;zr.value=1;$('zoomKind').textContent='(digital zoom)';}
   $('zoomVal').textContent=(+zr.value).toFixed(1)+'x';
   buildChips(+zr.min,+zr.max);
-  $('liveStart').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
+  $('liveStart').classList.add('hidden');$('liveTips').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
   LIVE.det=null;cancelAnimationFrame(LIVE.raf);liveLoop();
 }
 function rearmAuto(){LIVE.autoDone=false;LIVE.anchor=null;LIVE.steadySince=0;}
-function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');}
+function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');$('liveTips').classList.remove('hidden');}
 function buildChips(min,max){const box=$('zoomChips');box.innerHTML='';[1,2,3,5].filter(z=>z>=min&&z<=max).forEach(z=>{const b=document.createElement('button');b.type='button';b.className='chip glass'+(z===1?' on':'');b.textContent=z+'x';b.onclick=()=>{$('zoomRange').value=z;$('zoomRange').dispatchEvent(new Event('input'));[...box.children].forEach(c=>c.classList.toggle('on',c===b));};box.appendChild(b);});}
 $('liveStart').onclick=()=>{rearmAuto();startLive();};
 $('autoShotChk').onchange=rearmAuto;$('liveStop').onclick=stopLive;
