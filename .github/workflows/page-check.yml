@@ -1,0 +1,19 @@
+# 2026-11-14 4:35 PM CST — open the live Moon page in a real browser (phone size) and photograph the weather card
+name: Live page check
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/page-check.yml', 'tools/page_check.py']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install a browser
+        run: |
+          pip install playwright pillow >/dev/null
+          python -m playwright install --with-deps chromium >/dev/null
+      - name: Open the page and take pictures
+        run: python tools/page_check.py
