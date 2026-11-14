@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.4 — 2026-11-14 3:30 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.5 — 2026-11-14 4:10 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -87,6 +87,25 @@
   .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 6px;border:0;border-radius:22px;font:600 12px Inter,sans-serif;background:transparent;color:#c3cbe6}
   .tab.on{background:rgba(190,205,255,.92);color:#0b1230}
   #about{margin:6px 0 14px}
+  /* weather */
+  .wxTop{display:flex;align-items:center;gap:14px}
+  .wxRing{position:relative;width:86px;height:86px;flex:none}
+  .wxRing svg{display:block}
+  .wxRing b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 24px "Space Grotesk",sans-serif}
+  #wxLabel{font:700 18px "Space Grotesk",sans-serif;display:block}
+  .wxChips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 10px}
+  .wxChip{font-size:12px;padding:6px 9px;border-radius:12px;background:rgba(10,14,30,.6);border:1px solid var(--line);color:var(--ink)}
+  #wxMap{height:270px;border-radius:16px;overflow:hidden;background:#0a0e1e;position:relative}
+  #wxMap .wxMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mute);font-size:14px}
+  .wxBtns{display:flex;gap:6px;margin-top:8px}
+  .wxBtns button{flex:1;padding:9px 6px;border-radius:14px;font:600 13px Inter,sans-serif;color:var(--ink);background:rgba(10,14,30,.6);border:1px solid var(--line)}
+  .wxBtns button.on{background:var(--gold);color:#1a1400;border-color:transparent}
+  .wxCloudImg{mix-blend-mode:screen}
+  .card a{color:var(--gold)}
+  #wxFrame{position:absolute;left:8px;bottom:8px;z-index:500;padding:4px 8px;border-radius:10px;font:600 11px Inter,sans-serif;background:rgba(5,7,15,.7)}
+  .leaflet-container{background:#0a0e1e;font-family:Inter,sans-serif}
+  .leaflet-control-attribution{background:rgba(5,7,15,.6)!important;color:#9aa4c4!important;font-size:9px}
+  .leaflet-control-attribution a{color:#c3cbe6!important}
   /* antique compass */
   .cmpsWidget{display:flex;align-items:center;gap:14px;width:100%;text-align:left;color:var(--ink);border-radius:22px;padding:12px 14px;margin:0 0 14px}
   .cmpsWidget svg{flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
@@ -132,6 +151,17 @@
         <canvas id="pathCanvas" aria-label="Live sky timeline: the moon's height over the next 24 hours. Drag to preview a time."></canvas>
         <div class="row2" style="margin-top:6px"><span id="pathReadout" style="color:var(--ink)"></span><button id="pathNow" type="button" class="hidden" style="background:none;border:0;color:var(--gold);font:600 12px Inter,sans-serif;padding:0">Back to now</button></div>
         <div class="row2"><span id="windowMsg"></span><span id="nextEvent"></span></div>
+      </div>
+      <div class="card glass" id="wxCard">
+        <h2>Weather for the big-moon window</h2>
+        <div class="wxTop">
+          <div class="wxRing"><svg width="86" height="86" viewBox="0 0 86 86" aria-hidden="true"><circle cx="43" cy="43" r="36" fill="none" stroke="rgba(160,180,255,.18)" stroke-width="8"/><circle id="wxArc" cx="43" cy="43" r="36" fill="none" stroke="#7be0a6" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 999" transform="rotate(-90 43 43)"/></svg><b id="wxScore">–</b></div>
+          <div><span id="wxLabel">Checking the sky…</span><span id="wxWhen" class="mute small"></span></div>
+        </div>
+        <div id="wxChips" class="wxChips"></div>
+        <div id="wxMap"><div class="wxMsg">Loading the live map…</div><div id="wxFrame" class="hidden"></div></div>
+        <div class="wxBtns"><button id="wxRadarBtn" class="on" type="button">Rain radar</button><button id="wxCloudBtn" type="button">Clouds now</button><button id="wxPlayBtn" type="button">Play radar</button></div>
+        <p class="mute small" style="margin:8px 0 0">The gold line points toward the moon. Clouds along it matter most for a low moon. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a> · Radar: <a href="https://www.rainviewer.com/">Weather data by RainViewer</a> · Clouds: NOAA GOES-East infrared · Map © OpenStreetMap, © CARTO</p>
       </div>
       <div class="card glass">
         <h2>Big-moon alerts</h2>
@@ -343,7 +373,7 @@ function updateMoon(){
   $('windowMsg').textContent=!w?'No low-moon window in 2 days':(w.start-now<6e4?`Best window: now – ${w.end?fmtT(w.end):'later'}`:`Best window: ${fmtDay(w.start)==='today'?'':fmtDay(w.start)+' '}${fmtT(w.start)}${w.end?' – '+fmtT(w.end):''}`);
   drawPath(LOC.lat,LOC.lng,now);
   if(typeof placeMoonMarker==='function')placeMoonMarker();
-  if(!window._alertsShown){window._alertsShown=1;refreshAlertList();}
+  if(!window._alertsShown){window._alertsShown=1;refreshAlertList();loadWeather();initMap();}
 }
 /* ---------- Live sky timeline: real sky colors, sun, stars, and our realistic moon at its true phase ---------- */
 const TL={scrub:null,data:null,moonCache:{},lastBuild:0};
@@ -384,6 +414,10 @@ function drawTimeline(){
   // stars where it is dark
   let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
   for(let i=0;i<110;i++){const x=rnd()*W,y=rnd()*(hy-6),k=Math.min(N,Math.floor(x/cw)),dark=smooth(-4,-14,pts[k].s);if(dark<0.05){rnd();continue;}g.fillStyle=`rgba(255,255,255,${(dark*(0.35+rnd()*0.6)).toFixed(2)})`;g.fillRect(x,y,1.1,1.1);}
+  // forecast clouds: one smooth haze across the sky, thicker where it is cloudier
+  if(WX.data){const gx=g.createLinearGradient(0,0,W,0);let any=false;
+    for(let k=0;k<=N;k+=3){const c=wxCloudAt(pts[k].t.getTime());if(c!=null)any=true;gx.addColorStop(Math.min(1,k/N),`rgba(165,172,192,${(0.42*(c||0)).toFixed(3)})`);}
+    if(any){g.save();g.fillStyle=gx;const n=24;for(let i=0;i<n;i++){const y0=hy*i/n;g.globalAlpha=Math.pow((i+0.5)/n,0.7);g.fillRect(0,y0,W,hy/n+0.5);}g.restore();}}
   // illusion windows: soft green glow on the horizon
   pts.forEach((p,k)=>{if(k<N&&p.m.alt>=0&&p.m.alt<=10&&p.s<2){const gr=g.createLinearGradient(0,hy-34,0,hy);gr.addColorStop(0,'rgba(123,224,166,0)');gr.addColorStop(1,'rgba(123,224,166,0.28)');g.fillStyle=gr;g.fillRect(k*cw,hy-34,cw+1,34);}});
   // sun
@@ -433,6 +467,7 @@ function drawPath(lat,lng,now){
   $('pathNow').onclick=()=>{TL.scrub=null;drawTimeline();};
   setInterval(()=>{if(LOC&&TL.data&&Date.now()-TL.lastBuild>10*60e3)buildTimeline(LOC.lat,LOC.lng,new Date());drawTimeline();},15000);
   addEventListener('resize',()=>drawTimeline());
+  setInterval(()=>{if(LOC)loadWeather();},15*60e3);
 })();
 
 /* ---------- GPS from a photo's hidden location tag (EXIF). The photo itself is never kept. ---------- */
@@ -1085,9 +1120,112 @@ $('alertShare').onclick=async()=>{
   try{await navigator.share({files:[new File([buildIcs(ws,+$('alertLead').value)],'big-moon-alerts.ics',{type:'text/calendar'})]});}catch(e){}
 };
 
+/* ---------- Weather: cloud forecast, photo chance, live radar and satellite clouds ---------- */
+const WX={data:null,key:null,at:0,map:null,base:null,radar:null,clouds:null,frames:[],frameLayers:{},playing:null,mode:'radar',leaflet:null,moonLine:null};
+function destPoint(lat,lng,brg,km){const R=6371,d=km/R,t=brg*rad,p1=lat*rad,l1=lng*rad;const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(t));const l2=l1+Math.atan2(Math.sin(t)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));return[p2/rad,((l2/rad+540)%360)-180];}
+function wxTarget(){const now=new Date(),w=findWindow(LOC.lat,LOC.lng);const t=w?(w.start<now?now:w.start):now;return{t,w,m:moonPos(t,LOC.lat,LOC.lng)};}
+async function loadWeather(force){
+  if(!LOC||window.MME_NATIVE&&!window.MME_SHOW_MAP)return;const key=LOC.lat.toFixed(2)+','+LOC.lng.toFixed(2);
+  if(!force&&WX.key===key&&Date.now()-WX.at<15*60e3){renderWeather();return;}
+  const tg=wxTarget(),pts=[[LOC.lat,LOC.lng],destPoint(LOC.lat,LOC.lng,tg.m.bearing,30),destPoint(LOC.lat,LOC.lng,tg.m.bearing,70)];
+  const q=new URLSearchParams({latitude:pts.map(p=>p[0].toFixed(3)).join(','),longitude:pts.map(p=>p[1].toFixed(3)).join(','),
+    hourly:'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation_probability,visibility,relative_humidity_2m,temperature_2m',
+    temperature_unit:'fahrenheit',timeformat:'unixtime',timezone:'GMT',forecast_days:'3'});
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?'+q);if(!r.ok)throw new Error(r.status);
+    let j=await r.json();if(!Array.isArray(j))j=[j];
+    WX.data=j;WX.key=key;WX.at=Date.now();
+  }catch(e){$('wxLabel').textContent='Weather unavailable right now';$('wxWhen').textContent='Check your connection and try again later.';return;}
+  renderWeather();drawTimeline();
+}
+function wxAt(series,t){const h=series.hourly;if(!h||!h.time)return null;let best=0,bd=1e18;h.time.forEach((s,i)=>{const d=Math.abs(s*1000-t);if(d<bd){bd=d;best=i;}});
+  const g=k=>(h[k]&&h[k][best]!=null)?h[k][best]:null;return{low:g('cloud_cover_low'),mid:g('cloud_cover_mid'),high:g('cloud_cover_high'),total:g('cloud_cover'),pp:g('precipitation_probability'),vis:g('visibility'),rh:g('relative_humidity_2m'),temp:g('temperature_2m')};}
+/* Photo chance: clear view toward a low moon, no rain, good visibility, little haze, and a bright enough moon */
+function photoChance(here,toward,il,hasWindow){
+  const mixv=k=>{const a=here[k]??0,b=toward.length?toward.reduce((s,x)=>s+(x[k]??0),0)/toward.length:a;return 0.4*a+0.6*b;};
+  const low=mixv('low'),mid=mixv('mid'),high=mixv('high');
+  const clear=(1-low/100)*(1-0.7*mid/100)*(1-0.35*high/100);
+  const rain=1-0.9*(here.pp??0)/100;
+  const visKm=(here.vis??20000)/1000,vis=visKm>=20?1:visKm>=5?0.7+0.3*(visKm-5)/15:Math.max(0.25,0.7*visKm/5);
+  const haze=(here.rh??60)>85?1-((here.rh-85)/100):1;
+  const moon=hasWindow?0.55+0.45*il.fraction:0.35;
+  return{score:Math.round(100*Math.max(0,Math.min(1,clear*rain*vis*haze*moon))),low,mid,high,visKm};
+}
+function renderWeather(){
+  if(!WX.data||!LOC)return;
+  const tg=wxTarget(),t=tg.t.getTime(),here=wxAt(WX.data[0],t),toward=WX.data.slice(1).map(s=>wxAt(s,t)).filter(Boolean);if(!here)return;
+  const il=moonIllum(tg.t),P=photoChance(here,toward,il,!!tg.w),sc=P.score;
+  const lbl=sc>=75?'Great night for photos':sc>=55?'Good chance':sc>=35?'Fair: some clouds in the way':'Poor: clouds or rain likely';
+  const col=sc>=75?'#7be0a6':sc>=55?'#c9e27b':sc>=35?'#ffb36b':'#ff8a7a';
+  $('wxScore').textContent=sc+'%';$('wxLabel').textContent=lbl;$('wxLabel').style.color=col;
+  const arc=$('wxArc'),L=2*Math.PI*36;arc.setAttribute('stroke',col);arc.setAttribute('stroke-dasharray',`${(L*sc/100).toFixed(1)} ${L.toFixed(1)}`);
+  $('wxWhen').textContent=tg.w?(tg.w.start<=new Date()?'For right now, during the big-moon window':`For ${fmtDay(tg.t)==='today'?'tonight':fmtDay(tg.t)} at ${fmtT(tg.t)}, when the moon is low`):'No low-moon window in the next 2 days; showing right now';
+  const mi=P.visKm*0.621;
+  const chips=[`Clouds toward the moon ${Math.round(P.low)}% low · ${Math.round(P.mid)}% mid · ${Math.round(P.high)}% high`,`Rain chance ${Math.round(here.pp??0)}%`,`Visibility ${mi>=10?'10+':mi.toFixed(1)} mi`,`Humidity ${Math.round(here.rh??0)}%`,here.temp!=null?`${Math.round(here.temp)}°F`:null,`Moon ${Math.round(il.fraction*100)}% lit`].filter(Boolean);
+  $('wxChips').innerHTML=chips.map(c=>`<span class="wxChip">${c}</span>`).join('');
+  if(WX.map)drawMoonLine();
+}
+/* cloud cover (0..1) at a given time for the timeline overlay */
+function wxCloudAt(t){if(!WX.data)return null;const h=WX.data[0].hourly;if(!h||!h.time)return null;const i=Math.round((t/1000-h.time[0])/3600);if(i<0||i>=h.time.length)return null;const c=h.cloud_cover&&h.cloud_cover[i];return c==null?null:c/100;}
+
+/* live map (Leaflet loaded on demand) */
+function loadLeaflet(){if(WX.leaflet)return WX.leaflet;WX.leaflet=new Promise((res,rej)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l);
+  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=()=>res(window.L);s.onerror=()=>{WX.leaflet=null;rej(new Error('leaflet'));};document.head.appendChild(s);});return WX.leaflet;}
+async function initMap(){
+  if(WX.map||!LOC||window.MME_NATIVE&&!window.MME_SHOW_MAP)return;
+  const box=$('wxMap');
+  try{await loadLeaflet();}catch(e){box.querySelector('.wxMsg').textContent='The live map couldn’t load. Check your connection.';return;}
+  box.querySelector('.wxMsg').remove();
+  WX.map=L.map(box,{zoomControl:false,attributionControl:true,minZoom:3,maxZoom:10}).setView([LOC.lat,LOC.lng],7);
+  WX.base=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap contributors © CARTO'}).addTo(WX.map);
+  L.circleMarker([LOC.lat,LOC.lng],{radius:6,color:'#fff',weight:2,fillColor:'#f5c76b',fillOpacity:1}).addTo(WX.map);
+  drawMoonLine();await loadRadar();setMode('radar');
+  WX.map.on('moveend',()=>{if(WX.mode==='clouds')updateClouds();});
+  setInterval(()=>{if(WX.mode==='radar'&&!WX.playing)loadRadar();},10*60e3);
+}
+function drawMoonLine(){if(!WX.map||!LOC)return;const tg=wxTarget(),end=destPoint(LOC.lat,LOC.lng,tg.m.bearing,160);
+  if(WX.moonLine)WX.map.removeLayer(WX.moonLine);
+  WX.moonLine=L.layerGroup([L.polyline([[LOC.lat,LOC.lng],end],{color:'#f5c76b',weight:2,dashArray:'4 6',opacity:0.9}),L.circleMarker(end,{radius:7,color:'#f5c76b',weight:1,fillColor:'#fff6dc',fillOpacity:1})]).addTo(WX.map);}
+async function loadRadar(){
+  try{const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');const j=await r.json();
+    const past=(j.radar&&j.radar.past)||[];WX.frames=past.map(f=>({time:f.time,url:j.host+f.path+'/256/{z}/{x}/{y}/2/1_1.png'}));
+  }catch(e){WX.frames=[];}
+  if(!WX.frames.length)return;
+  const latest=WX.frames[WX.frames.length-1];
+  if(WX.radar)WX.map.removeLayer(WX.radar);
+  WX.radar=L.tileLayer(latest.url,{opacity:0.8,maxNativeZoom:7,maxZoom:10,attribution:'<a href="https://www.rainviewer.com/">RainViewer</a>'});
+  if(WX.mode==='radar')WX.radar.addTo(WX.map);
+  showFrameTime(latest.time);
+}
+function showFrameTime(ts){const f=$('wxFrame');if(!ts){f.classList.add('hidden');return;}f.textContent=(WX.mode==='radar'?'Radar ':'Clouds ')+fmtT(new Date(ts*1000));f.classList.remove('hidden');}
+function updateClouds(){
+  if(!WX.map)return;const b=WX.map.getBounds(),sz=WX.map.getSize();
+  const url='https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_current/ImageServer/exportImage?'+new URLSearchParams({bbox:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(4)).join(','),bboxSR:'4326',imageSR:'3857',size:`${Math.min(1024,sz.x)},${Math.min(1024,sz.y)}`,format:'png',transparent:'true',f:'image'});
+  const ov=L.imageOverlay(url,b,{opacity:0.75,className:'wxCloudImg',attribution:'NOAA GOES-East'});
+  ov.on('load',()=>{if(WX.clouds&&WX.clouds!==ov)WX.map.removeLayer(WX.clouds);WX.clouds=ov;});
+  ov.on('error',()=>{WX.map.removeLayer(ov);showFrameTime(null);});
+  ov.addTo(WX.map);showFrameTime(Date.now()/1000);
+}
+function stopPlay(){if(WX.playing){clearInterval(WX.playing);WX.playing=null;}Object.values(WX.frameLayers).forEach(l=>WX.map.removeLayer(l));WX.frameLayers={};$('wxPlayBtn').textContent='Play radar';}
+function setMode(m){
+  if(!WX.map)return;WX.mode=m;stopPlay();
+  $('wxRadarBtn').classList.toggle('on',m==='radar');$('wxCloudBtn').classList.toggle('on',m==='clouds');
+  if(m==='radar'){if(WX.clouds){WX.map.removeLayer(WX.clouds);WX.clouds=null;}if(WX.radar)WX.radar.addTo(WX.map);showFrameTime(WX.frames.length?WX.frames[WX.frames.length-1].time:null);}
+  else{if(WX.radar)WX.map.removeLayer(WX.radar);updateClouds();}
+}
+$('wxRadarBtn').onclick=()=>setMode('radar');
+$('wxCloudBtn').onclick=()=>setMode('clouds');
+$('wxPlayBtn').onclick=()=>{
+  if(!WX.map||!WX.frames.length)return;if(WX.playing){stopPlay();setMode('radar');return;}
+  if(WX.mode!=='radar')setMode('radar');if(WX.radar)WX.map.removeLayer(WX.radar);
+  const fr=WX.frames.slice(-8);let k=0;$('wxPlayBtn').textContent='Stop';
+  fr.forEach(f=>{WX.frameLayers[f.time]=L.tileLayer(f.url,{opacity:0,maxNativeZoom:7,maxZoom:10}).addTo(WX.map);});
+  WX.playing=setInterval(()=>{fr.forEach((f,i)=>WX.frameLayers[f.time].setOpacity(i===k?0.8:0));showFrameTime(fr[k].time);k=(k+1)%fr.length;},700);
+};
+
 /* ---------- Tabs ---------- */
 function goTab(v){['moon','camera','loc'].forEach(k=>$('view-'+k).classList.toggle('hidden',k!==v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
-  $('topTitle').textContent=v==='moon'?'Tonight':v==='camera'?'Camera':'Location';window.scrollTo({top:0});if(v==='moon')setTimeout(drawTimeline,30);}
+  $('topTitle').textContent=v==='moon'?'Tonight':v==='camera'?'Camera':'Location';window.scrollTo({top:0});if(v==='moon')setTimeout(()=>{drawTimeline();if(WX.map)WX.map.invalidateSize();},30);}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>goTab(t.dataset.view));
 $('goLive').onclick=()=>{goTab('camera');rearmAuto();startLive();};
 $('aboutBtn').onclick=()=>$('about').classList.toggle('hidden');
