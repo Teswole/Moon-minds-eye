@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.5 — 2026-11-14 4:10 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.6 — 2026-11-14 4:05 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -161,7 +161,7 @@
         <div id="wxChips" class="wxChips"></div>
         <div id="wxMap"><div class="wxMsg">Loading the live map…</div><div id="wxFrame" class="hidden"></div></div>
         <div class="wxBtns"><button id="wxRadarBtn" class="on" type="button">Rain radar</button><button id="wxCloudBtn" type="button">Clouds now</button><button id="wxPlayBtn" type="button">Play radar</button></div>
-        <p class="mute small" style="margin:8px 0 0">The gold line points toward the moon. Clouds along it matter most for a low moon. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a> · Radar: <a href="https://www.rainviewer.com/">Weather data by RainViewer</a> · Clouds: NOAA GOES-East infrared · Map © OpenStreetMap, © CARTO</p>
+        <p class="mute small" style="margin:8px 0 0">The gold line points toward the moon. Clouds along it matter most for a low moon. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a> · Radar &amp; clouds (US): NEXRAD and NOAA GOES-East via <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a> · Outside the US: <a href="https://www.rainviewer.com/">Weather data by RainViewer</a> · Map © OpenStreetMap, © CARTO</p>
       </div>
       <div class="card glass">
         <h2>Big-moon alerts</h2>
@@ -1176,35 +1176,58 @@ async function initMap(){
   const box=$('wxMap');
   try{await loadLeaflet();}catch(e){box.querySelector('.wxMsg').textContent='The live map couldn’t load. Check your connection.';return;}
   box.querySelector('.wxMsg').remove();
-  WX.map=L.map(box,{zoomControl:false,attributionControl:true,minZoom:3,maxZoom:10}).setView([LOC.lat,LOC.lng],7);
+  WX.map=L.map(box,{zoomControl:false,attributionControl:true,minZoom:3,maxZoom:12}).setView([LOC.lat,LOC.lng],7);
   WX.base=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap contributors © CARTO'}).addTo(WX.map);
   L.circleMarker([LOC.lat,LOC.lng],{radius:6,color:'#fff',weight:2,fillColor:'#f5c76b',fillOpacity:1}).addTo(WX.map);
   drawMoonLine();await loadRadar();setMode('radar');
-  WX.map.on('moveend',()=>{if(WX.mode==='clouds')updateClouds();});
-  setInterval(()=>{if(WX.mode==='radar'&&!WX.playing)loadRadar();},10*60e3);
+  WX.map.on('moveend',()=>{if(WX.mode==='clouds'&&!inUS())updateClouds();});
+  setInterval(()=>{if(WX.playing)return;if(WX.mode==='radar')loadRadar();else updateClouds();},5*60e3);
 }
 function drawMoonLine(){if(!WX.map||!LOC)return;const tg=wxTarget(),end=destPoint(LOC.lat,LOC.lng,tg.m.bearing,160);
   if(WX.moonLine)WX.map.removeLayer(WX.moonLine);
   WX.moonLine=L.layerGroup([L.polyline([[LOC.lat,LOC.lng],end],{color:'#f5c76b',weight:2,dashArray:'4 6',opacity:0.9}),L.circleMarker(end,{radius:7,color:'#f5c76b',weight:1,fillColor:'#fff6dc',fillOpacity:1})]).addTo(WX.map);}
+/* US: Iowa Environmental Mesonet (NEXRAD radar + GOES-East infrared, any zoom, every 5 min). Elsewhere: RainViewer radar. */
+const IEM='https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/';
+const inUS=()=>LOC&&LOC.lat>24&&LOC.lat<50&&LOC.lng>-126&&LOC.lng<-66;
+const bust=()=>Math.floor(Date.now()/300000);   // new tiles every 5 minutes
 async function loadRadar(){
-  try{const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');const j=await r.json();
-    const past=(j.radar&&j.radar.past)||[];WX.frames=past.map(f=>({time:f.time,url:j.host+f.path+'/256/{z}/{x}/{y}/2/1_1.png'}));
-  }catch(e){WX.frames=[];}
-  if(!WX.frames.length)return;
+  WX.frames=[];
+  if(inUS()){
+    // newest last: 50 minutes ago … now
+    for(let m=50;m>=0;m-=5){const id='nexrad-n0q-900913'+(m?'-m'+String(m).padStart(2,'0')+'m':'');WX.frames.push({time:Math.floor(Date.now()/1000)-m*60,url:IEM+id+'/{z}/{x}/{y}.png?v='+bust(),native:12,credit:'NEXRAD radar via <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a>'});}
+  }else{
+    try{const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');if(!r.ok)throw new Error(r.status);const j=await r.json();
+      WX.frames=((j.radar&&j.radar.past)||[]).map(f=>({time:f.time,url:j.host+f.path+'/256/{z}/{x}/{y}/2/1_1.png',native:7,credit:'<a href="https://www.rainviewer.com/">Weather data by RainViewer</a>'}));
+    }catch(e){WX.frames=[];}
+  }
+  if(!WX.frames.length){wxNote('Radar isn’t available right now.');return;}
   const latest=WX.frames[WX.frames.length-1];
   if(WX.radar)WX.map.removeLayer(WX.radar);
-  WX.radar=L.tileLayer(latest.url,{opacity:0.8,maxNativeZoom:7,maxZoom:10,attribution:'<a href="https://www.rainviewer.com/">RainViewer</a>'});
+  WX.radar=radarLayer(latest,0.8);
   if(WX.mode==='radar')WX.radar.addTo(WX.map);
   showFrameTime(latest.time);
 }
+function radarLayer(f,op){
+  const l=L.tileLayer(f.url,{opacity:op,maxNativeZoom:f.native,maxZoom:12,attribution:f.credit});
+  let errs=0;l.on('tileerror',()=>{if(++errs===6)wxNote('Some radar tiles didn’t load. Try again in a minute.');});
+  return l;
+}
+function wxNote(t){const f=$('wxFrame');f.textContent=t;f.classList.remove('hidden');}
 function showFrameTime(ts){const f=$('wxFrame');if(!ts){f.classList.add('hidden');return;}f.textContent=(WX.mode==='radar'?'Radar ':'Clouds ')+fmtT(new Date(ts*1000));f.classList.remove('hidden');}
 function updateClouds(){
-  if(!WX.map)return;const b=WX.map.getBounds(),sz=WX.map.getSize();
-  const url='https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_current/ImageServer/exportImage?'+new URLSearchParams({bbox:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(4)).join(','),bboxSR:'4326',imageSR:'3857',size:`${Math.min(1024,sz.x)},${Math.min(1024,sz.y)}`,format:'png',transparent:'true',f:'image'});
-  const ov=L.imageOverlay(url,b,{opacity:0.75,className:'wxCloudImg',attribution:'NOAA GOES-East'});
-  ov.on('load',()=>{if(WX.clouds&&WX.clouds!==ov)WX.map.removeLayer(WX.clouds);WX.clouds=ov;});
-  ov.on('error',()=>{WX.map.removeLayer(ov);showFrameTime(null);});
-  ov.addTo(WX.map);showFrameTime(Date.now()/1000);
+  if(!WX.map)return;
+  if(WX.clouds)WX.map.removeLayer(WX.clouds);
+  if(inUS()){
+    WX.clouds=L.tileLayer(IEM+'goes_east_conus_ch13/{z}/{x}/{y}.png?v='+bust(),{opacity:0.8,maxNativeZoom:9,maxZoom:12,className:'wxCloudImg',attribution:'GOES-East infrared via <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a>'});
+    let errs=0;WX.clouds.on('tileerror',()=>{if(++errs===6)wxNote('Satellite clouds didn’t load. Try again in a minute.');});
+    WX.clouds.addTo(WX.map);showFrameTime(Math.floor(Date.now()/1000));
+  }else{
+    const b=WX.map.getBounds(),sz=WX.map.getSize();
+    const url='https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_current/ImageServer/exportImage?'+new URLSearchParams({bbox:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(4)).join(','),bboxSR:'4326',imageSR:'3857',size:`${Math.min(1024,sz.x)},${Math.min(1024,sz.y)}`,format:'png',transparent:'true',f:'image'});
+    WX.clouds=L.imageOverlay(url,b,{opacity:0.75,className:'wxCloudImg',attribution:'NOAA GOES-East'});
+    WX.clouds.on('error',()=>wxNote('Satellite clouds aren’t available for this area.'));
+    WX.clouds.addTo(WX.map);showFrameTime(Math.floor(Date.now()/1000));
+  }
 }
 function stopPlay(){if(WX.playing){clearInterval(WX.playing);WX.playing=null;}Object.values(WX.frameLayers).forEach(l=>WX.map.removeLayer(l));WX.frameLayers={};$('wxPlayBtn').textContent='Play radar';}
 function setMode(m){
@@ -1218,8 +1241,8 @@ $('wxCloudBtn').onclick=()=>setMode('clouds');
 $('wxPlayBtn').onclick=()=>{
   if(!WX.map||!WX.frames.length)return;if(WX.playing){stopPlay();setMode('radar');return;}
   if(WX.mode!=='radar')setMode('radar');if(WX.radar)WX.map.removeLayer(WX.radar);
-  const fr=WX.frames.slice(-8);let k=0;$('wxPlayBtn').textContent='Stop';
-  fr.forEach(f=>{WX.frameLayers[f.time]=L.tileLayer(f.url,{opacity:0,maxNativeZoom:7,maxZoom:10}).addTo(WX.map);});
+  const fr=WX.frames.slice(-11);let k=0;$('wxPlayBtn').textContent='Stop';
+  fr.forEach(f=>{WX.frameLayers[f.time]=radarLayer(f,0).addTo(WX.map);});
   WX.playing=setInterval(()=>{fr.forEach((f,i)=>WX.frameLayers[f.time].setOpacity(i===k?0.8:0));showFrameTime(fr[k].time);k=(k+1)%fr.length;},700);
 };
 
