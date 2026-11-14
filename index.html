@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.7 — 2026-11-14 4:50 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.8 — 2026-11-14 4:05 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -326,7 +326,14 @@ const fmtT=t=>t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
 const fmtDay=t=>{const n=new Date();const tm=new Date(n);tm.setDate(n.getDate()+1);if(t.toDateString()===n.toDateString())return'today';if(t.toDateString()===tm.toDateString())return'tomorrow';return t.toLocaleDateString([], {weekday:'long'});};
 
 /* Illusion zone: moon 0–10° up while the sky is darkening/dark */
-function findWindow(lat,lng){const now=Date.now();let start=null;for(let i=0;i<=48*12;i++){const t=new Date(now+i*3e5);const m=moonPos(t,lat,lng),s=sunAlt(t,lat,lng);const ok=m.alt>=0&&m.alt<=10&&s<2;if(ok&&!start)start=t;if(!ok&&start)return{start,end:t};}return start?{start,end:null}:null;}
+function findWindow(lat,lng){
+  const now=Date.now(),okAt=t=>{const m=moonPos(t,lat,lng);return m.alt>=0&&m.alt<=10&&sunAlt(t,lat,lng)<2;};
+  const sharpen=(from,to,want)=>{for(let t=from;t<=to;t+=60e3)if(okAt(new Date(t))===want)return new Date(t);return new Date(to);};   // to the minute
+  let start=null;
+  for(let i=0;i<=48*12;i++){const t=new Date(now+i*3e5),ok=okAt(t);
+    if(ok&&!start)start=i===0?t:sharpen(t.getTime()-3e5,t.getTime(),true);
+    if(!ok&&start)return{start,end:sharpen(t.getTime()-3e5,t.getTime(),false)};}
+  return start?{start,end:null}:null;}
 
 /* ---------- Location ---------- */
 let LOC=null, MOON=null;
@@ -419,7 +426,17 @@ function drawTimeline(){
     for(let k=0;k<=N;k+=3){const c=wxCloudAt(pts[k].t.getTime());if(c!=null)any=true;gx.addColorStop(Math.min(1,k/N),`rgba(165,172,192,${(0.42*(c||0)).toFixed(3)})`);}
     if(any){g.save();g.fillStyle=gx;const n=24;for(let i=0;i<n;i++){const y0=hy*i/n;g.globalAlpha=Math.pow((i+0.5)/n,0.7);g.fillRect(0,y0,W,hy/n+0.5);}g.restore();}}
   // illusion windows: soft green glow on the horizon
-  pts.forEach((p,k)=>{if(k<N&&p.m.alt>=0&&p.m.alt<=10&&p.s<2){const gr=g.createLinearGradient(0,hy-34,0,hy);gr.addColorStop(0,'rgba(123,224,166,0)');gr.addColorStop(1,'rgba(123,224,166,0.28)');g.fillStyle=gr;g.fillRect(k*cw,hy-34,cw+1,34);}});
+  const wins=[];{let st=null;for(let k=0;k<=N;k++){const p=pts[k],ok=k<N&&p.m.alt>=0&&p.m.alt<=10&&p.s<2;if(ok&&st===null)st=k;if(!ok&&st!==null){wins.push({k0:st,k1:k,t0:pts[st].t,t1:pts[k].t});st=null;}}}
+  // sharpen each edge to the minute, so the tags match "Best window" below
+  {const okAt=t=>{const m=moonPos(t,LOC.lat,LOC.lng);return m.alt>=0&&m.alt<=10&&sunAlt(t,LOC.lat,LOC.lng)<2;};
+   wins.forEach(w=>{if(w.k0>0){for(let t=pts[w.k0-1].t.getTime();t<=w.t0.getTime();t+=60e3)if(okAt(new Date(t))){w.t0=new Date(t);break;}}
+     if(w.k1<=N){for(let t=pts[w.k1-1].t.getTime();t<=w.t1.getTime();t+=60e3)if(!okAt(new Date(t))){w.t1=new Date(t);break;}}});}
+  const bandH=46;
+  wins.forEach(w=>{const x0=w.k0*cw,x1=w.k1*cw;
+    const gr=g.createLinearGradient(0,hy-bandH,0,hy);gr.addColorStop(0,'rgba(123,224,166,0)');gr.addColorStop(0.55,'rgba(123,224,166,0.18)');gr.addColorStop(1,'rgba(123,224,166,0.42)');
+    g.fillStyle=gr;g.fillRect(x0,hy-bandH,x1-x0,bandH);
+    g.strokeStyle='rgba(143,240,191,0.75)';g.lineWidth=1;g.setLineDash([2,3]);
+    [x0,x1].forEach(x=>{g.beginPath();g.moveTo(x+0.5,hy-bandH);g.lineTo(x+0.5,hy);g.stroke();});g.setLineDash([]);});
   // sun
   const sNow=sunAlt(new Date(tSel),LOC.lat,LOC.lng);
   if(sNow>-1){const sx=X(tSel),sy=Y(sNow),gr=g.createRadialGradient(sx,sy,2,sx,sy,22);gr.addColorStop(0,'rgba(255,236,170,0.9)');gr.addColorStop(1,'rgba(255,200,90,0)');g.fillStyle=gr;g.beginPath();g.arc(sx,sy,22,0,7);g.fill();g.fillStyle='#fff1c2';g.beginPath();g.arc(sx,sy,6,0,7);g.fill();}
@@ -437,6 +454,14 @@ function drawTimeline(){
   // time labels every 3 hours
   g.fillStyle='rgba(200,208,235,0.85)';g.font='600 10px Inter, sans-serif';g.textAlign='center';
   const first=new Date(t0);first.setMinutes(0,0,0);for(let t=first.getTime()+3600e3;t<t0+N*step;t+=3600e3){const d=new Date(t);if(d.getHours()%3)continue;const x=X(t);if(x<14||x>W-14)continue;g.fillText(d.toLocaleTimeString([], {hour:'numeric'}),x,H-8);g.fillRect(x-0.5,hy+2,1,4);}
+  // start and end times of each big-moon window, in small green tags above the band
+  g.font='600 9px Inter, sans-serif';g.textBaseline='middle';
+  const tag=(txt,cx,cy)=>{const w=g.measureText(txt).width+10,x=Math.max(2,Math.min(W-w-2,cx-w/2));g.fillStyle='rgba(8,24,18,0.82)';g.beginPath();if(g.roundRect)g.roundRect(x,cy-8,w,16,8);else g.rect(x,cy-8,w,16);g.fill();g.fillStyle='#8ff0bf';g.textAlign='left';g.fillText(txt,x+5,cy+0.5);return[x,x+w];};
+  wins.forEach(w=>{const x0=w.k0*cw,x1=w.k1*cw,ty=hy-bandH-9,a=fmtT(w.t0),b=fmtT(w.t1);
+    const sameHalf=a.slice(-2)===b.slice(-2);
+    if(x1-x0<92){tag(sameHalf?a.slice(0,-3)+'–'+b:a+'–'+b,(x0+x1)/2,ty);}
+    else{tag(a,x0,ty);tag(b,x1,ty);}});
+  g.textBaseline='alphabetic';
   // "now" line
   const nx=X(now);g.strokeStyle='rgba(245,199,107,0.75)';g.lineWidth=1.2;g.beginPath();g.moveTo(nx,4);g.lineTo(nx,hy);g.stroke();
   g.fillStyle='#f5c76b';g.font='700 9px Inter, sans-serif';g.fillText('NOW',Math.min(W-14,Math.max(14,nx)),hy+16);
