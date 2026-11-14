@@ -1,4 +1,4 @@
-# 2026-11-14 3:10 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
+# 2026-11-14 3:20 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
 name: iPhone app
 
 on:
@@ -31,9 +31,12 @@ jobs:
       - name: Compile check (no signing)
         run: |
           cd ios
+          set -o pipefail
           xcodebuild -project MoonMindsEye.xcodeproj -scheme MoonMindsEye \
             -destination 'generic/platform=iOS' -configuration Release \
-            CODE_SIGNING_ALLOWED=NO build -quiet
+            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: |BUILD (SUCCEEDED|FAILED)|SwiftCompile" | grep -v "^$" | tail -40
+          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/MoonMindsEye.app"
+          test -f "$APP/MoonMindsEye" && echo "App built: $(du -sh "$APP" | cut -f1)" || (echo "App binary missing" && exit 1)
 
       - name: Archive and send to TestFlight
         if: env.HAS_APPLE_SECRETS == 'true'
