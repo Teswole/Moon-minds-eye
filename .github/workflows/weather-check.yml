@@ -29,7 +29,6 @@ jobs:
           check "CARTO dark map tile  " "https://a.basemaps.cartocdn.com/dark_all/6/15/26.png"
           check "Leaflet library      " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
           check "Leaflet styles       " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: weather-samples
-          path: samples/
+      - name: Print sample images (base64) for review
+        run: |
+          for f in samples/*; do case "$f" in *IEM_radar_now*|*IEM_GOES*|*RainViewer_tile_z6*|*RainViewer_tile_z7*|*NOAA*) echo "B64 $(basename $f) $(base64 -w0 $f)";; esac; done
