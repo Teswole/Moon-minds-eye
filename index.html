@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.2 — 2026-11-13 11:10 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.3 — 2026-11-14 7:40 AM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -208,6 +208,7 @@
       <label class="chk"><input id="rebuildChk" type="checkbox" checked> Rebuild the moon in full detail</label>
       <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
       <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front</label>
+      <label class="chk"><input id="aiSkyChk" type="checkbox" checked> AI sky detection (downloads a small model the first time)</label>
       <label class="chk"><input id="skyChk" type="checkbox" checked> Mind's-eye sky: twilight blue and crisp outlines</label>
       <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
       <label class="chk"><input id="cleanChk" type="checkbox" checked> Crystal-clear clean-up</label>
@@ -574,6 +575,40 @@ $('calMoon').onclick=()=>{
 };
 setCal(CAL);
 
+/* ---------- AI sky detection: SegFormer-B0 (ADE20K, 150 classes incl. sky, tree, pole, building) on the phone via Transformers.js ---------- */
+const SKYAI={seg:null,loading:null};let SKYMASK=null,AIFAIL=false;
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+async function loadSkyAI(){
+  if(SKYAI.seg)return SKYAI.seg;
+  if(!SKYAI.loading)SKYAI.loading=(async()=>{
+    const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
+    const id='Xenova/segformer-b0-finetuned-ade-512-512';
+    try{return await T.pipeline('image-segmentation',id,{dtype:'q8'});}catch(e){return await T.pipeline('image-segmentation',id);}
+  })();
+  try{SKYAI.seg=await SKYAI.loading;return SKYAI.seg;}catch(e){SKYAI.loading=null;throw e;}
+}
+async function computeSkyMask(){
+  SKYMASK=null;AIFAIL=false;if(!$('aiSkyChk').checked||!SRC)return;
+  try{
+    setClean(SKYAI.seg?'AI is finding the sky…':'Loading the sky AI (first time only)…');await tick();
+    const seg=await withTimeout(loadSkyAI(),120000);
+    const sc=Math.min(1,640/Math.max(SRC.width,SRC.height)),w=Math.round(SRC.width*sc),h=Math.round(SRC.height*sc);
+    const c=mk(w,h);c.getContext('2d').drawImage(SRC,0,0,w,h);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92)),url=URL.createObjectURL(blob);
+    setClean('AI is finding the sky…');await tick();
+    let out;try{out=await withTimeout(seg(url),90000);}finally{URL.revokeObjectURL(url);}
+    const sky=(out||[]).find(o=>o.label==='sky'),m=new Uint8Array(w*h);
+    if(sky&&sky.mask){const md=sky.mask,mw=md.width,mh=md.height,ch=md.channels||1;
+      for(let y=0;y<h;y++){const sy=Math.min(mh-1,Math.round(y*mh/h));for(let x=0;x<w;x++){const sx=Math.min(mw-1,Math.round(x*mw/w));m[y*w+x]=md.data[(sy*mw+sx)*ch]>127?255:0;}}}
+    const b=blur(m,w,h,1,2),data=new Float32Array(w*h);for(let i=0;i<w*h;i++)data[i]=b[i]/255;
+    SKYMASK={w,h,sc,data,found:!!sky};
+  }catch(e){SKYMASK=null;AIFAIL=true;}
+}
+const useAI=()=>!!(SKYMASK&&SKYMASK.found&&$('aiSkyChk').checked);
+function skyAt(x,y){const M=SKYMASK;if(!M)return 1;const fx=Math.min(M.w-1,Math.max(0,x*M.sc)),fy=Math.min(M.h-1,Math.max(0,y*M.sc)),x0=fx|0,y0=fy|0,x1=Math.min(M.w-1,x0+1),y1=Math.min(M.h-1,y0+1),tx=fx-x0,ty=fy-y0,d=M.data;
+  return(d[y0*M.w+x0]*(1-tx)+d[y0*M.w+x1]*tx)*(1-ty)+(d[y1*M.w+x0]*(1-tx)+d[y1*M.w+x1]*tx)*ty;}
+$('aiSkyChk').onchange=async()=>{if(!SRC)return;await computeSkyMask();DET=detect(DET?{x:DET.cx,y:DET.cy}:null);render();};
+
 /* ---------- Image pipeline ---------- */
 let SRC=null, SCTX=null, DET=null, OUT_BLOB=null, showBefore=false;
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
@@ -605,6 +640,7 @@ async function processSources(imgs){
   SRC=mk(RAW.width,RAW.height);SCTX=SRC.getContext('2d',{willReadFrequently:true});SCTX.drawImage(RAW,0,0);
   CLEANINFO=null;
   if($('cleanChk').checked){setClean('Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,SRC.width,SRC.height);CLEANINFO.merged=merged;}
+  await computeSkyMask();
   DET=detect(null);render();
 }
 $('camIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
@@ -700,6 +736,7 @@ function detect(hint,from){
     if(big>0.18)score*=0.03;else if(big>0.1)score*=0.3;          // the moon is small in a phone photo
     if(bx0<=1||by0<=1||bx1>=W-2||by1>=H-2)score*=0.08;            // shapes touching the frame edge are ground, sky glow or lights
     score*=1.15-0.5*((by0+by1)/2/H);                              // slight preference for the upper part of the frame
+    if(from===SRC&&useAI()){const s_=skyAt((bx0+bx1)/2/sc,(by0+by1)/2/sc),s2=skyAt((bx0+bx1)/2/sc,by0/sc-3/sc);score*=0.15+0.85*Math.max(s_,s2);}   // the moon sits in the sky
     if(area>W*H*0.2)score*=0.05; // huge bright area = sky/light, not moon
     if(hint){const dx=(bx0+bx1)/2-hint.x*sc,dy=(by0+by1)/2-hint.y*sc;score/=1+Math.hypot(dx,dy)/(W*0.03);}
     if(!best||score>best.score)best={score,cx:(bx0+bx1+1)/2,cy:(by0+by1+1)/2,r:Math.max(bw,bh)/2};
@@ -732,10 +769,10 @@ function skyRef(cx,cy,r){
 function analyzeMoon(d){
   const half=Math.ceil(d.r*3)+4,x0=Math.max(0,Math.round(d.cx-half)),y0=Math.max(0,Math.round(d.cy-half)),x1=Math.min(SRC.width,Math.round(d.cx+half)),y1=Math.min(SRC.height,Math.round(d.cy+half));
   const w=x1-x0,h=y1-y0;if(w<4||h<4)return null;const px=SCTX.getImageData(x0,y0,w,h).data;
-  let mx=0;for(let i=0;i<w*h;i++)mx=Math.max(mx,lumOf(px,i*4));const t=mx*0.55;
+  let mx=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(Math.hypot(x0+x-d.cx,y0+y-d.cy)>d.r*1.6)continue;mx=Math.max(mx,lumOf(px,(y*w+x)*4));}const t=mx*0.8;   // the crescent itself, not its glow
   let n=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,cr=0,cg=0,cb=0,cn=0;const P=[];
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,L=lumOf(px,i);
-    if(L>=t){const X=x0+x,Y=y0+y;P.push(X,Y);n++;sx+=X;sy+=Y;sxx+=X*X;syy+=Y*Y;sxy+=X*Y;}
+    if(L>=t){const X=x0+x,Y=y0+y;if(Math.hypot(X-d.cx,Y-d.cy)>d.r*1.6)continue;P.push(X,Y);n++;sx+=X;sy+=Y;sxx+=X*X;syy+=Y*Y;sxy+=X*Y;}   // only the moon itself, not lit poles nearby
     if(L>=mx*0.6){cr+=px[i];cg+=px[i+1];cb+=px[i+2];cn++;}}
   if(n<6)return null;
   const mxc=sx/n,myc=sy/n,a=sxx/n-mxc*mxc,b=sxy/n-mxc*myc,c=syy/n-myc*myc;
@@ -767,7 +804,7 @@ function rebuildMoon(ctx,f){
    const sd=sx.getImageData(0,0,sw,sw),q=sd.data,n=sw*sw,sky0=skyRef(cx,cy,Math.min(R*2.6,Rf*1.1));
    const M=new Uint8Array(n),ch=[new Uint8Array(n),new Uint8Array(n),new Uint8Array(n)];
    const ringL=[];for(let i=0;i<n;i++){const rr=Math.hypot(i%sw-sw/2,((i/sw)|0)-sw/2)/sc;if(rr>Rf*1.02&&rr<Rf*1.2)ringL.push(lumOf(q,i*4));}ringL.sort((p,q2)=>p-q2);const ringMed=ringL.length?ringL[ringL.length>>1]:sky0;
-   for(let i=0;i<n;i++){const x=i%sw,y=(i/sw)|0,rr=Math.hypot(x-sw/2,y-sw/2)/sc;const fg=ringMed>14&&lumOf(q,i*4)<ringMed*0.7;
+   for(let i=0;i<n;i++){const x=i%sw,y=(i/sw)|0,rr=Math.hypot(x-sw/2,y-sw/2)/sc;const gxs=ox0+x/sc,gys=oy0+y/sc;const fg=useAI()?(Math.hypot(gxs-cx,gys-cy)>R*1.3&&skyAt(gxs,gys)<0.5):(ringMed>14&&lumOf(q,i*4)<ringMed*0.7);
      const keep=rr>Rf*1.02&&!fg;M[i]=keep?255:0;for(let c=0;c<3;c++)ch[c][i]=keep?q[i*4+c]:0;}
    const r1=Math.max(2,Math.round(Rf*sc*0.6)),r2=Math.max(3,Math.round(Rf*sc*1.2)),Mb=blur(M,sw,sw,r1,4),Cb=ch.map(c=>blur(c,sw,sw,r1,4)),Mb2=blur(M,sw,sw,r2,4),Cb2=ch.map(c=>blur(c,sw,sw,r2,4));
    let fb=[0,0,0],fn=0;for(let i=0;i<n;i++)if(M[i]){for(let c=0;c<3;c++)fb[c]+=q[i*4+c];fn++;}fb=fb.map(v=>fn?v/fn:10);
@@ -793,11 +830,12 @@ function rebuildMoon(ctx,f){
   // 3) keep trees, poles and wires in front: anything darker than the sky, or clearly darker than its own surroundings
   const ox=Math.round(cx-Lh),oy=Math.round(cy-Lh),sky=skyRef(cx,cy,Rf/1.7);
   if($('fgChk').checked){
-    const md=lx.getImageData(0,0,Lsz,Lsz),m=md.data,sx0=Math.max(0,ox),sy0=Math.max(0,oy),sx1=Math.min(SRC.width,ox+Lsz),sy1=Math.min(SRC.height,oy+Lsz);
+    const AI=useAI(),md=lx.getImageData(0,0,Lsz,Lsz),m=md.data,sx0=Math.max(0,ox),sy0=Math.max(0,oy),sx1=Math.min(SRC.width,ox+Lsz),sy1=Math.min(SRC.height,oy+Lsz);
     if(sx1>sx0&&sy1>sy0){const ow=sx1-sx0,oh=sy1-sy0,od=SCTX.getImageData(sx0,sy0,ow,oh).data,Yl=lumaPlane(od,ow*oh),Yb=blur(Yl,ow,oh,Math.max(2,Math.round(R*0.6)),2);
       for(let y=0;y<Lsz;y++){const gy=oy+y;if(gy<sy0||gy>=sy1)continue;for(let x=0;x<Lsz;x++){const gx=ox+x;if(gx<sx0||gx>=sx1)continue;const j=(gy-sy0)*ow+(gx-sx0),l=Yl[j];
-        let k=1;if(sky>18)k=Math.min(k,smooth(sky*0.4,sky*0.72,l));
-        const li=y*Lsz+x;if(FD[li*4+3]>128&&FL[li]>18&&Math.hypot(gx-cx,gy-cy)>R*2.2)k=Math.min(k,smooth(0.62,0.86,l/FL[li]));if(Yb[j]>30&&Math.hypot(gx-cx,gy-cy)>R*2.2)k=Math.min(k,smooth(0.55,0.8,l/Yb[j]));
+        let k=1;const li=y*Lsz+x,dc=Math.hypot(gx-cx,gy-cy);
+        if(AI){if(dc>R*1.3)k=Math.min(k,smooth(0.25,0.75,skyAt(gx,gy)));}
+        else{if(sky>18)k=Math.min(k,smooth(sky*0.4,sky*0.72,l));if(FD[li*4+3]>128&&FL[li]>18&&dc>R*2.2)k=Math.min(k,smooth(0.62,0.86,l/FL[li]));}if(!AI&&Yb[j]>30&&Math.hypot(gx-cx,gy-cy)>R*2.2)k=Math.min(k,smooth(0.55,0.8,l/Yb[j]));
         if(Yb[j]>20&&Math.hypot(gx-cx,gy-cy)>R*2.2&&!(FD[li*4+3]>128&&l>FL[li]*1.35))k=Math.min(k,1-smooth(0.14,0.32,Math.abs(l-Yb[j])/Yb[j]));   // thin poles and wires, lit or dark
         if(k<1)m[(y*Lsz+x)*4+3]*=k;}}
       lx.putImageData(md,0,0);}
@@ -809,8 +847,9 @@ function rebuildMoon(ctx,f){
 /* Mind's-eye sky: at night the eye sees the sky as deep blue, not camera-black; outlines read crisp */
 function mindsEyeLook(ctx,w,h){
   const img=ctx.getImageData(0,0,w,h),d=img.data;let changed=0;
-  for(let y=0;y<h;y++){const v=1-smooth(0.35,0.78,y/h);if(v<=0.01)continue;const t=y/h,top=[10,20,48],hor=[34,52,98],tg=[top[0]+(hor[0]-top[0])*t,top[1]+(hor[1]-top[1])*t,top[2]+(hor[2]-top[2])*t];
-    for(let x=0;x<w;x++){const i=(y*w+x)*4,L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2],k=v*(1-smooth(18,70,L))*0.85;if(k<=0.01)continue;
+  const AI=useAI();
+  for(let y=0;y<h;y++){const v=AI?1:1-smooth(0.35,0.78,y/h);if(v<=0.01)continue;const t=y/h,top=[10,20,48],hor=[34,52,98],tg=[top[0]+(hor[0]-top[0])*t,top[1]+(hor[1]-top[1])*t,top[2]+(hor[2]-top[2])*t];
+    for(let x=0;x<w;x++){const i=(y*w+x)*4,L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];let k=v*(1-smooth(18,70,L))*0.85;if(k<=0.01)continue;if(AI){k*=skyAt(x,y);if(k<=0.01)continue;}
       d[i]=d[i]+(Math.max(d[i],tg[0])-d[i])*k;d[i+1]=d[i+1]+(Math.max(d[i+1],tg[1])-d[i+1])*k;d[i+2]=d[i+2]+(Math.max(d[i+2],tg[2])-d[i+2])*k;changed++;}}
   ctx.putImageData(img,0,0);return changed>w*h*0.15;
 }
@@ -872,7 +911,7 @@ function render(){
     const cut=Math.max(0,Math.round((1-CLEANINFO.after/Math.max(CLEANINFO.before,0.01))*100));
     const ok=CLEANINFO.after<=1.2;setClean(ok?'Crystal-clear check passed':'Cleaned · some grain left',ok?'b-good':'b-wait');
     const tick_='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7be0a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%',REB?`Moon rebuilt · ${REB.pct}% phase`:'Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');if(SKY)items.push('Twilight-blue sky');
+    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%',REB?`Moon rebuilt · ${REB.pct}% phase`:'Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');if(SKY)items.push('Twilight-blue sky');if(useAI())items.push('AI found the sky');else if(AIFAIL&&$('aiSkyChk').checked)items.push('Basic sky finder (AI not loaded)');
     $('checks').innerHTML=items.map(t=>`<div>${tick_}${t}</div>`).join('');$('checks').classList.remove('hidden');
     if(!ok)$('cleanMsg').textContent+=' (merge 3–5 shots for cleaner)';}
   else if(!$('cleanChk').checked){setClean('Clean-up off: showing the photo as shot','b-off');$('checks').classList.add('hidden');}
