@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.1 — 2026-11-13 10:55 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.2 — 2026-11-13 11:10 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -166,6 +166,7 @@
         <div class="mute small" style="text-align:center">Zoom <b id="zoomVal">1.0x</b> <span id="zoomKind"></span></div>
         <input id="zoomRange" class="slider hidden" type="range" min="1" max="5" step="0.1" value="1">
         <label class="chk"><input id="livePrevChk" type="checkbox" checked> Show the mind's-eye moon live</label>
+        <label class="chk"><input id="autoShotChk" type="checkbox" checked> Auto-capture when the moon is low and you hold steady</label>
         <div class="shutterRow"><button id="shutter" aria-label="Take picture"></button></div>
         <p class="mute" style="text-align:center;margin:8px 0 0">Hold steady: 4 frames merge into one crisp shot</p>
         <p class="mute small" style="text-align:center;margin:4px 0 0">Wrong light picked? Tap the moon on the screen.</p>
@@ -207,6 +208,7 @@
       <label class="chk"><input id="rebuildChk" type="checkbox" checked> Rebuild the moon in full detail</label>
       <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
       <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front</label>
+      <label class="chk"><input id="skyChk" type="checkbox" checked> Mind's-eye sky: twilight blue and crisp outlines</label>
       <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
       <label class="chk"><input id="cleanChk" type="checkbox" checked> Crystal-clear clean-up</label>
       <details class="mt"><summary class="mute">Moon not found? Tap it here</summary>
@@ -804,6 +806,16 @@ function rebuildMoon(ctx,f){
   return{usedImg,pct:Math.round(il.fraction*100)};
 }
 
+/* Mind's-eye sky: at night the eye sees the sky as deep blue, not camera-black; outlines read crisp */
+function mindsEyeLook(ctx,w,h){
+  const img=ctx.getImageData(0,0,w,h),d=img.data;let changed=0;
+  for(let y=0;y<h;y++){const v=1-smooth(0.35,0.78,y/h);if(v<=0.01)continue;const t=y/h,top=[10,20,48],hor=[34,52,98],tg=[top[0]+(hor[0]-top[0])*t,top[1]+(hor[1]-top[1])*t,top[2]+(hor[2]-top[2])*t];
+    for(let x=0;x<w;x++){const i=(y*w+x)*4,L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2],k=v*(1-smooth(18,70,L))*0.85;if(k<=0.01)continue;
+      d[i]=d[i]+(Math.max(d[i],tg[0])-d[i])*k;d[i+1]=d[i+1]+(Math.max(d[i+1],tg[1])-d[i+1])*k;d[i+2]=d[i+2]+(Math.max(d[i+2],tg[2])-d[i+2])*k;changed++;}}
+  ctx.putImageData(img,0,0);return changed>w*h*0.15;
+}
+function clarity(ctx,w,h){const img=ctx.getImageData(0,0,w,h);sharpenData(img.data,w,h,3,0.35,2);ctx.putImageData(img,0,0);}   // crisper poles, branches and rooflines
+
 function drawPreview(){
   const pv=$('preview'),W=Math.min(1200,SRC.width),sc=W/SRC.width;pv.width=W;pv.height=Math.round(SRC.height*sc);
   const x=pv.getContext('2d');x.drawImage(SRC,0,0,pv.width,pv.height);
@@ -825,8 +837,9 @@ function render(){
   alertMsg(`Found the moon ✓ (${Math.round(DET.r*2)} px wide in a ${SRC.width} px photo)`);
 
   const out=mk(SRC.width,SRC.height),ox_=out.getContext('2d');ox_.drawImage(SRC,0,0);
-  let REB=null;
-  if($('rebuildChk').checked&&TEX.ready){REB=rebuildMoon(ox_,f);}
+  let REB=null,SKY=false;
+  if($('skyChk').checked)SKY=mindsEyeLook(ox_,out.width,out.height);   // tint the sky first, so the rebuilt moon blends into it
+  if($('rebuildChk').checked&&TEX.ready){const s0=SRC,c0=SCTX;if(SKY){SRC=out;SCTX=ox_;}try{REB=rebuildMoon(ox_,f);}finally{SRC=s0;SCTX=c0;}}
   else{
   const {cx,cy,r}=DET,R=r*1.4;
   let S=Math.round(2*R*f);S=Math.min(S,4096);const fr=S/(2*R);
@@ -854,11 +867,12 @@ function render(){
   }
   ox_.drawImage(m,ox,oy);
   }
+  if($('skyChk').checked)clarity(ox_,out.width,out.height);
   if($('cleanChk').checked&&CLEANINFO){const od=ox_.getImageData(0,0,out.width,out.height);sharpenData(od.data,out.width,out.height,1,0.6,Math.max(1.5,CLEANINFO.after*2.5));ox_.putImageData(od,0,0);
     const cut=Math.max(0,Math.round((1-CLEANINFO.after/Math.max(CLEANINFO.before,0.01))*100));
     const ok=CLEANINFO.after<=1.2;setClean(ok?'Crystal-clear check passed':'Cleaned · some grain left',ok?'b-good':'b-wait');
     const tick_='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7be0a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%',REB?`Moon rebuilt · ${REB.pct}% phase`:'Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');
+    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%',REB?`Moon rebuilt · ${REB.pct}% phase`:'Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');if(SKY)items.push('Twilight-blue sky');
     $('checks').innerHTML=items.map(t=>`<div>${tick_}${t}</div>`).join('');$('checks').classList.remove('hidden');
     if(!ok)$('cleanMsg').textContent+=' (merge 3–5 shots for cleaner)';}
   else if(!$('cleanChk').checked){setClean('Clean-up off: showing the photo as shot','b-off');$('checks').classList.add('hidden');}
@@ -870,11 +884,12 @@ function showView(){
   if(SRC)SRC.toBlob(b=>b&&setImg($('origImg'),b),'image/jpeg',0.9);
 }
 $('cmpRange').oninput=()=>{const v=+$('cmpRange').value;$('origImg').style.clipPath=`inset(0 ${100-v}% 0 0)`;$('cmpLine').style.left=v+'%';$('cmpKnob').style.left=v+'%';};
-$('retakeBtn').onclick=()=>{if(STREAM){$('liveWrap').scrollIntoView({behavior:'smooth'});}else{$('camIn').click();}};
+$('retakeBtn').onclick=()=>{if(STREAM){rearmAuto();$('liveWrap').scrollIntoView({behavior:'smooth'});}else{$('camIn').click();}};
 $('autoChk').onchange=()=>SRC&&render();
 let rt=null;$('sizeRange').oninput=()=>{$('autoChk').checked=false;$('sizeVal').textContent=(+$('sizeRange').value).toFixed(1)+'x';clearTimeout(rt);rt=setTimeout(()=>SRC&&render(),180);};
 $('fgChk').onchange=()=>SRC&&render();
 $('rebuildChk').onchange=()=>SRC&&render();
+$('skyChk').onchange=()=>SRC&&render();
 $('warmChk').onchange=()=>SRC&&render();
 
 /* ---------- Live camera: see the mind's-eye moon while aiming, burst-capture on tap ---------- */
@@ -897,9 +912,11 @@ async function startLive(){
   $('liveStart').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
   LIVE.det=null;cancelAnimationFrame(LIVE.raf);liveLoop();
 }
+function rearmAuto(){LIVE.autoDone=false;LIVE.anchor=null;LIVE.steadySince=0;}
 function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');}
 function buildChips(min,max){const box=$('zoomChips');box.innerHTML='';[1,2,3,5].filter(z=>z>=min&&z<=max).forEach(z=>{const b=document.createElement('button');b.type='button';b.className='chip glass'+(z===1?' on':'');b.textContent=z+'x';b.onclick=()=>{$('zoomRange').value=z;$('zoomRange').dispatchEvent(new Event('input'));[...box.children].forEach(c=>c.classList.toggle('on',c===b));};box.appendChild(b);});}
-$('liveStart').onclick=startLive;$('liveStop').onclick=stopLive;
+$('liveStart').onclick=()=>{rearmAuto();startLive();};
+$('autoShotChk').onchange=rearmAuto;$('liveStop').onclick=stopLive;
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&STREAM)stopLive();});
 let zt=null;
 $('zoomRange').oninput=()=>{const z=+$('zoomRange').value;$('zoomVal').textContent=z.toFixed(1)+'x';LIVE.det=null;
@@ -928,6 +945,16 @@ function liveLoop(){
   const D=LIVE.det,cx=D.cx*dw,cy=D.cy*dh,r=Math.max(2,D.r*dw),f=autoFactorFor(c.w,D.r*c.w).f;
   const prev=$('livePrevChk').checked;
   b.className='badge b-good';b.textContent=prev?`Moon locked ✓ ${f.toFixed(1)}x mind's eye`:'Moon locked ✓';
+  // auto-capture: moon low (or height unknown) and the phone steady for about 1.5 seconds
+  if($('autoShotChk').checked&&!LIVE.autoDone&&!LIVE.busy){
+    const low=!MOON||(MOON.alt>=-1&&MOON.alt<=15),tnow=performance.now();
+    const moved=LIVE.anchor?Math.hypot(D.cx-LIVE.anchor.x,D.cy-LIVE.anchor.y):1;
+    if(!low){LIVE.steadySince=0;}
+    else if(moved>0.015){LIVE.anchor={x:D.cx,y:D.cy};LIVE.steadySince=tnow;}
+    else if(LIVE.steadySince){const left=1.8-(tnow-LIVE.steadySince)/1000;
+      if(left<=0){LIVE.autoDone=true;LIVE.steadySince=0;$('shutter').click();}
+      else{b.className='badge b-wait';b.textContent=`Hold still… auto-capture in ${Math.ceil(left)}`;}}
+  }
   if(!prev){vctx.strokeStyle='#f5c76b';vctx.lineWidth=3;vctx.beginPath();vctx.arc(cx,cy,r*1.8+6,0,7);vctx.stroke();return;}
   const R=r*1.4,S=Math.max(8,Math.min(1400,Math.round(2*R*f)));
   if(lm.width!==S){lm.width=S;lm.height=S;}
@@ -1021,7 +1048,7 @@ $('alertShare').onclick=async()=>{
 function goTab(v){['moon','camera','loc'].forEach(k=>$('view-'+k).classList.toggle('hidden',k!==v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
   $('topTitle').textContent=v==='moon'?'Tonight':v==='camera'?'Camera':'Location';window.scrollTo({top:0});if(v==='moon')setTimeout(drawTimeline,30);}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>goTab(t.dataset.view));
-$('goLive').onclick=()=>{goTab('camera');startLive();};
+$('goLive').onclick=()=>{goTab('camera');rearmAuto();startLive();};
 $('aboutBtn').onclick=()=>$('about').classList.toggle('hidden');
 $('topDate').textContent=new Date().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
