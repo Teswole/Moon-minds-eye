@@ -1,4 +1,4 @@
-// 2026-11-14 3:10 PM CST — Camera: live view, lens choice, moon finder, and the two-exposure "mind's eye" shot
+// 2026-11-14 3:50 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
 import AVFoundation
 import UIKit
 import Photos
@@ -16,6 +16,12 @@ final class CameraModel: NSObject, ObservableObject {
     @Published var status = "Starting camera…"
     @Published var busy = false
     @Published var lastResult: UIImage?
+    @Published var lastBefore: UIImage?
+    @Published var lastChecks = ""
+    @Published var showResult = false
+    @Published var rebuildMoon = true
+    @Published var mindsEyeSky = true
+    @Published var aiSky = true
     @Published var moonExposure = true {
         didSet { sessionQueue.async { self.applyPreviewExposure() } }
     }
@@ -115,7 +121,7 @@ final class CameraModel: NSObject, ObservableObject {
 
     // MARK: - The mind's-eye shot: one photo for the scene, one short exposure for the moon
 
-    func captureMindsEye() {
+    func captureMindsEye(lat: Double? = nil, lng: Double? = nil) {
         guard !busy else { return }
         DispatchQueue.main.async { self.busy = true; self.status = "Hold still…" }
         sessionQueue.async {
@@ -130,15 +136,39 @@ final class CameraModel: NSObject, ObservableObject {
                             guard let scene = scene, let moon = moon else { self.finish(nil, message: "The photo didn't come through. Try again."); return }
                             DispatchQueue.main.async { self.status = "Blending the moon…" }
                             DispatchQueue.global(qos: .userInitiated).async {
-                                let result = MoonBlend.blend(scene: scene, moon: moon)
-                                self.save(result ?? scene)
-                                self.finish(result.flatMap { UIImage(data: $0) } ?? UIImage(data: scene),
-                                            message: result == nil ? "Saved. (Moon not found in the dark frame, so only the scene was kept.)" : "Saved to Photos")
+                                let base = MoonBlend.blend(scene: scene, moon: moon) ?? MoonBlend.uprightJPEG(scene) ?? scene
+                                DispatchQueue.main.async { self.runProcessor(base, lat: lat, lng: lng) }
                             }
                         }
                     } }
                 }
             }
+        }
+    }
+
+    /// Step 3: the mind's-eye processor (moon rebuild, sky AI, twilight sky, enlarging)
+    private func runProcessor(_ base: Data, lat: Double?, lng: Double?) {
+        status = "Rebuilding the moon…"
+        let rebuild = rebuildMoon, sky = mindsEyeSky, ai = aiSky
+        Task { @MainActor in
+            var final = base
+            var checks = "Saved the photo as taken"
+            do {
+                let r = try await WebProcessor.shared.process(base, lat: lat, lng: lng, when: Date(),
+                                                              rebuild: rebuild, mindsEyeSky: sky, aiSky: ai)
+                if let jpeg = r.jpeg { final = jpeg }
+                checks = r.found ? ([r.size.isEmpty ? nil : "Moon \(r.size)", r.checks].compactMap { $0 }.joined(separator: " · "))
+                                 : "Moon not found, so the photo was saved as taken"
+            } catch {
+                checks = "The processor had a problem, so the photo was saved as taken"
+            }
+            self.save(final)
+            self.lastBefore = UIImage(data: base)
+            self.lastResult = UIImage(data: final)
+            self.lastChecks = checks
+            self.status = "Saved to Photos"
+            self.busy = false
+            self.showResult = true
         }
     }
 

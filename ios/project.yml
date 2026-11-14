@@ -1,4 +1,4 @@
-# 2026-11-14 3:10 PM CST — Xcode project definition (XcodeGen builds the .xcodeproj on GitHub's Macs)
+# 2026-11-14 3:55 PM CST — Xcode project definition (XcodeGen builds the .xcodeproj on GitHub's Macs)
 name: MoonMindsEye
 options:
   bundleIdPrefix: com.teswole
@@ -15,6 +15,9 @@ targets:
     platform: iOS
     sources:
       - path: MoonMindsEye
+      - path: Web            # the photo processor + moon maps, copied from the website at build time
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.teswole.moonmindseye

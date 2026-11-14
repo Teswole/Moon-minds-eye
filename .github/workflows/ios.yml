@@ -1,10 +1,10 @@
-# 2026-11-14 3:20 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
+# 2026-11-14 3:55 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
 name: iPhone app
 
 on:
   push:
     branches: [main]
-    paths: ['ios/**', '.github/workflows/ios.yml']
+    paths: ['ios/**', '.github/workflows/ios.yml', 'index.html', 'moon-albedo.png', 'moon-normal.png']
   workflow_dispatch:
 
 jobs:
@@ -25,6 +25,7 @@ jobs:
 
       - name: Make the Xcode project
         run: |
+          mkdir -p ios/Web && cp index.html moon-albedo.png moon-normal.png ios/Web/
           brew install xcodegen
           cd ios && xcodegen generate
 

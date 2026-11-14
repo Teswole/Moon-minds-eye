@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.3 — 2026-11-14 7:40 AM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.4 — 2026-11-14 3:30 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -371,6 +371,7 @@ function miniMoon(t,q){ // small realistic moon for time t, cached by hour
 function drawTimeline(){
   const cv=$('pathCanvas');if(!cv||!LOC||!TL.data||cv.offsetParent===null)return;
   const dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,H=150;
+  if(!(W>=40))return;   // not on screen (or too narrow to draw)
   if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=H*dpr;}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
   const {t0,step,N,pts}=TL.data,now=Date.now(),tSel=TL.scrub??now;
@@ -765,6 +766,7 @@ function skyRef(cx,cy,r){
   if(!vals.length)return 0;vals.sort((a,b)=>a-b);return vals[vals.length>>1];
 }
 
+let PHOTO_TIME=null;   // when the photo was taken (set by the app); otherwise now
 /* Measure the moon in the photo: center, true radius (horn to horn), which way the lit side faces, and its color */
 function analyzeMoon(d){
   const half=Math.ceil(d.r*3)+4,x0=Math.max(0,Math.round(d.cx-half)),y0=Math.max(0,Math.round(d.cy-half)),x1=Math.min(SRC.width,Math.round(d.cx+half)),y1=Math.min(SRC.height,Math.round(d.cy+half));
@@ -785,7 +787,7 @@ function analyzeMoon(d){
 }
 /* Paint the detailed moon over the photo's moon: tonight's phase, turned to match the photo, sized like the mind's eye */
 function rebuildMoon(ctx,f){
-  const il=moonIllum(new Date()),A=analyzeMoon(DET);
+  const il=moonIllum(PHOTO_TIME||new Date()),A=analyzeMoon(DET);
   let cx=DET.cx,cy=DET.cy,R=DET.r,rot=(MOON?MOON.q:0),usedImg=false;
   if(A&&il.fraction<0.55){
     const [p,q]=A.tips,hx=(p[0]+q[0])/2,hy=(p[1]+q[1])/2,hr=Math.hypot(p[0]-q[0],p[1]-q[1])/2;
@@ -1121,7 +1123,27 @@ function drawHero(il,q){if(!TEX.ready)return;const key=il.fraction.toFixed(3)+'|
 loadTex().then(()=>{LAST_HERO=0;TL.moonCache={};updateMoon();}).catch(()=>{});
 
 /* ---------- Start ---------- */
-(function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}tryGps();})();
+(function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}if(!window.MME_NATIVE)tryGps();})();
+
+/* ---------- Hook for the iPhone app: process one photo, hand back the finished picture ---------- */
+window.mmeProcess=async(b64,opts)=>{
+  opts=opts||{};
+  if(opts.lat!=null&&opts.lng!=null)setLoc(+opts.lat,+opts.lng,'app');
+  PHOTO_TIME=opts.when?new Date(+opts.when):null;
+  if(LOC&&PHOTO_TIME)MOON=moonPos(PHOTO_TIME,LOC.lat,LOC.lng);
+  ['rebuildChk','skyChk','aiSkyChk','cleanChk','fgChk','autoChk'].forEach(id=>{if(opts[id]!=null)$(id).checked=!!opts[id];});
+  if(!TEX.ready){try{await loadTex();}catch(e){}}
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Could not read the photo'));i.src='data:image/jpeg;base64,'+b64;});
+  OUT_BLOB=null;DET=null;
+  await processSources([img]);
+  if(!DET)return{jpeg:null,found:false,checks:'Moon not found'};
+  for(let k=0;k<300&&!OUT_BLOB;k++)await new Promise(r=>setTimeout(r,100));
+  if(!OUT_BLOB)return{jpeg:null,found:true,checks:'Processing timed out'};
+  const buf=new Uint8Array(await OUT_BLOB.arrayBuffer());let bin='';
+  for(let i=0;i<buf.length;i+=0x8000)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));
+  const checks=[...$('checks').children].map(c=>c.textContent.trim()).filter(Boolean).join(' · ');
+  return{jpeg:btoa(bin),found:true,checks,size:$('sizeVal').textContent};
+};
 </script>
 </body>
 </html>

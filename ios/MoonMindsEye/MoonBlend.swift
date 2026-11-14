@@ -1,4 +1,4 @@
-// 2026-11-14 3:10 PM CST — Blend the short "moon" exposure into the normal "scene" photo, so both look right at once
+// 2026-11-14 3:50 PM CST — Blend the short "moon" exposure into the normal "scene" photo, so both look right at once
 import CoreImage
 import CoreGraphics
 import Foundation
@@ -29,6 +29,13 @@ enum MoonBlend {
         let out = lighter.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: s, kCIInputMaskImageKey: mask])
         let cs = s.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
         return context.jpegRepresentation(of: out.cropped(to: s.extent), colorSpace: cs, options: [:])
+    }
+
+    /// Any photo (HEIC or JPEG) as an upright JPEG, for the processor
+    static func uprightJPEG(_ data: Data) -> Data? {
+        guard let img = CIImage(data: data, options: [.applyOrientationProperty: true]) else { return nil }
+        let cs = img.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        return context.jpegRepresentation(of: img, colorSpace: cs, options: [:])
     }
 
     /// Brightest small blob in the image: center and radius in Core Image coordinates (origin bottom-left).
