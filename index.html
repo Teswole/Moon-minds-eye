@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.0 — 2026-11-13 3:05 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.1 — 2026-11-13 10:55 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -202,8 +202,9 @@
       <div id="checks" class="checks hidden"></div>
       <div class="mt">
         <div class="row2" style="font-size:14px;color:var(--ink)"><span class="mute">Mind's-eye size</span><span><b id="sizeVal">2.5x</b> <span id="sizeWhy" class="mute small"></span></span></div>
-        <input id="sizeRange" class="slider" type="range" min="1" max="4" step="0.1" value="2.5">
+        <input id="sizeRange" class="slider" type="range" min="1" max="5" step="0.1" value="2.5">
       </div>
+      <label class="chk"><input id="rebuildChk" type="checkbox" checked> Rebuild the moon in full detail</label>
       <label class="chk"><input id="autoChk" type="checkbox" checked> Auto size (thinks like your brain)</label>
       <label class="chk"><input id="fgChk" type="checkbox" checked> Keep trees and buildings in front</label>
       <label class="chk"><input id="warmChk" type="checkbox"> Warm horizon glow</label>
@@ -216,7 +217,7 @@
         <button id="retakeBtn" class="btn glass" style="flex:1">Retake</button>
         <button id="saveBtn" class="btn gold hidden" style="flex:1.6">Save to Photos</button>
       </div>
-      <p class="mute small" id="saveHint">Or touch and hold the picture, then tap <b>Save to Photos</b>. This is an edited picture: the moon is enlarged to match how it looks to the eye.</p>
+      <p class="mute small" id="saveHint">Or touch and hold the picture, then tap <b>Save to Photos</b>. This is an edited picture: the moon is enlarged to match how it looks to the eye, and with “Rebuild” on, its detail comes from the app’s own moon map at tonight’s phase.</p>
     </section>
   </section>
 
@@ -599,9 +600,9 @@ async function processSources(imgs){
   RAW=mk(W,H);RAWCTX=RAW.getContext('2d',{willReadFrequently:true});RAWCTX.drawImage(imgs[0],0,0,W,H);
   let merged=1;
   if(imgs.length>1){merged=await stack(imgs,W,H);}
-  SRC=mk(W,H);SCTX=SRC.getContext('2d',{willReadFrequently:true});SCTX.drawImage(RAW,0,0);
+  SRC=mk(RAW.width,RAW.height);SCTX=SRC.getContext('2d',{willReadFrequently:true});SCTX.drawImage(RAW,0,0);
   CLEANINFO=null;
-  if($('cleanChk').checked){setClean('Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,W,H);CLEANINFO.merged=merged;}
+  if($('cleanChk').checked){setClean('Removing grain…');await tick();CLEANINFO=await cleanUp(SCTX,SRC.width,SRC.height);CLEANINFO.merged=merged;}
   DET=detect(null);render();
 }
 $('camIn').onchange=e=>{onFiles(e.target.files);e.target.value='';};
@@ -610,19 +611,23 @@ $('cleanChk').onchange=async()=>{if(!RAW)return;SCTX.drawImage(RAW,0,0);CLEANINF
 
 /* Merge shots: line each one up on the moon, then average. Grain is random, so it cancels out. */
 async function stack(imgs,W,H){
-  const ref=detect(null,RAW);const sum=new Uint16Array(W*H*3),cnt=new Uint8Array(W*H);let used=0;
+  const ref=detect(null,RAW);const sum=new Uint16Array(W*H*3),cnt=new Uint8Array(W*H);let used=0,mnx=0,mxx=0,mny=0,mxy=0;
   const tmp=mk(W,H),tx=tmp.getContext('2d',{willReadFrequently:true});
   for(let k=0;k<imgs.length;k++){
     tx.clearRect(0,0,W,H);tx.drawImage(imgs[k],0,0,W,H);
     let dx=0,dy=0;if(ref){const d=detect(ref?{x:ref.cx,y:ref.cy}:null,tmp);if(!d||Math.hypot(d.cx-ref.cx,d.cy-ref.cy)>W*0.08)continue;dx=Math.round(ref.cx-d.cx);dy=Math.round(ref.cy-d.cy);}
     const p=tx.getImageData(0,0,W,H).data;
     for(let y=0;y<H;y++){const sy=y-dy;if(sy<0||sy>=H)continue;for(let x=0;x<W;x++){const sx=x-dx;if(sx<0||sx>=W)continue;const si=(sy*W+sx)*4,di=y*W+x;sum[di*3]+=p[si];sum[di*3+1]+=p[si+1];sum[di*3+2]+=p[si+2];cnt[di]++;}}
-    used++;setClean(`Merging shots… ${k+1}/${imgs.length}`);await tick();
+    used++;mnx=Math.min(mnx,dx);mxx=Math.max(mxx,dx);mny=Math.min(mny,dy);mxy=Math.max(mxy,dy);setClean(`Merging shots… ${k+1}/${imgs.length}`);await tick();
   }
   if(used<2)return 1;
   const o=RAWCTX.getImageData(0,0,W,H),od=o.data;
   for(let i=0;i<W*H;i++){const c=cnt[i];if(!c)continue;od[i*4]=sum[i*3]/c;od[i*4+1]=sum[i*3+1]/c;od[i*4+2]=sum[i*3+2]/c;}
-  RAWCTX.putImageData(o,0,0);return used;
+  RAWCTX.putImageData(o,0,0);
+  // crop to the part of the picture that every merged frame covers, so no ghost strip shows at the edges
+  const x0=mxx,y0=mxy,x1=W+mnx,y1=H+mny;
+  if(x1-x0>W*0.6&&y1-y0>H*0.6&&(x0>0||y0>0||x1<W||y1<H)){const c=mk(x1-x0,y1-y0),cx_=c.getContext('2d',{willReadFrequently:true});cx_.drawImage(RAW,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0);RAW=c;RAWCTX=cx_;}
+  return used;
 }
 
 /* Fast blur used by the clean-up steps */
@@ -688,7 +693,11 @@ function detect(hint,from){
       if(py<H-1){const q=p+W;if(!seen[q]&&L[q]>=t){seen[q]=1;st.push(q);}}}
     const bw=bx1-bx0+1,bh=by1-by0+1,asp=Math.max(bw,bh)/Math.min(bw,bh);
     const fill=area/(bw*bh);
-    let score=sum*(asp>2.6?0.2:1)*(fill<0.25?0.4:1)*(area<2?0.2:1);
+    const mean=sum/area,big=Math.max(bw,bh)/W;
+    let score=mean*mean*Math.sqrt(area)*(asp>2.6?0.2:1)*(fill<0.25?0.4:1)*(area<2?0.2:1);
+    if(big>0.18)score*=0.03;else if(big>0.1)score*=0.3;          // the moon is small in a phone photo
+    if(bx0<=1||by0<=1||bx1>=W-2||by1>=H-2)score*=0.08;            // shapes touching the frame edge are ground, sky glow or lights
+    score*=1.15-0.5*((by0+by1)/2/H);                              // slight preference for the upper part of the frame
     if(area>W*H*0.2)score*=0.05; // huge bright area = sky/light, not moon
     if(hint){const dx=(bx0+bx1)/2-hint.x*sc,dy=(by0+by1)/2-hint.y*sc;score/=1+Math.hypot(dx,dy)/(W*0.03);}
     if(!best||score>best.score)best={score,cx:(bx0+bx1+1)/2,cy:(by0+by1+1)/2,r:Math.max(bw,bh)/2};
@@ -702,9 +711,9 @@ function detect(hint,from){
 function autoFactorFor(width,r){
   const a=MOON?Math.max(0,MOON.alt):5;
   const illusion=1+0.9*Math.min(1,Math.max(0,1-a/35));          // brain: about 1.9x at the horizon, 1x by about 35°
-  const target=0.02+0.025*Math.min(1,Math.max(0,1-a/30));        // how wide the moon "feels" in the frame
+  const target=0.08+0.06*Math.min(1,Math.max(0,1-a/30));         // how wide the moon "feels" in the frame
   const lens=target*width/(2*r);                          // fixes the wide lens
-  const f=Math.min(4,Math.max(1,Math.max(illusion,lens)));
+  const f=Math.min(5,Math.max(1,Math.max(illusion,lens)));
   const why=MOON?`(moon ${a.toFixed(0)}° up${lens>illusion?', wide lens':''})`:'(set location for a smarter guess)';
   return{f,why};
 }
@@ -715,6 +724,84 @@ function skyRef(cx,cy,r){
   const vals=[];
   for(let k=0;k<3;k++){const rr=r*(1.7+k*0.5);for(let i=0;i<48;i++){const a=i/48*2*Math.PI;const x=Math.round(cx+Math.cos(a)*rr),y=Math.round(cy+Math.sin(a)*rr);if(x<0||y<0||x>=SRC.width||y>=SRC.height)continue;const d=SCTX.getImageData(x,y,1,1).data;vals.push(lumOf(d,0));}}
   if(!vals.length)return 0;vals.sort((a,b)=>a-b);return vals[vals.length>>1];
+}
+
+/* Measure the moon in the photo: center, true radius (horn to horn), which way the lit side faces, and its color */
+function analyzeMoon(d){
+  const half=Math.ceil(d.r*3)+4,x0=Math.max(0,Math.round(d.cx-half)),y0=Math.max(0,Math.round(d.cy-half)),x1=Math.min(SRC.width,Math.round(d.cx+half)),y1=Math.min(SRC.height,Math.round(d.cy+half));
+  const w=x1-x0,h=y1-y0;if(w<4||h<4)return null;const px=SCTX.getImageData(x0,y0,w,h).data;
+  let mx=0;for(let i=0;i<w*h;i++)mx=Math.max(mx,lumOf(px,i*4));const t=mx*0.55;
+  let n=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,cr=0,cg=0,cb=0,cn=0;const P=[];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,L=lumOf(px,i);
+    if(L>=t){const X=x0+x,Y=y0+y;P.push(X,Y);n++;sx+=X;sy+=Y;sxx+=X*X;syy+=Y*Y;sxy+=X*Y;}
+    if(L>=mx*0.6){cr+=px[i];cg+=px[i+1];cb+=px[i+2];cn++;}}
+  if(n<6)return null;
+  const mxc=sx/n,myc=sy/n,a=sxx/n-mxc*mxc,b=sxy/n-mxc*myc,c=syy/n-myc*myc;
+  const th=0.5*Math.atan2(2*b,a-c),ux=Math.cos(th),uy=Math.sin(th);
+  // horn tips = the two ends of the bright shape along its long axis (they mark a full diameter)
+  let pmin=1e9,pmax=-1e9,tminx=0,tminy=0,tmaxx=0,tmaxy=0;
+  for(let k=0;k<P.length;k+=2){const p=(P[k]-mxc)*ux+(P[k+1]-myc)*uy;if(p<pmin){pmin=p;tminx=P[k];tminy=P[k+1];}if(p>pmax){pmax=p;tmaxx=P[k];tmaxy=P[k+1];}}
+  let tint=[1,0.97,0.9];if(cn>4){const m=Math.max(cr,cg,cb)/cn||1;const t0=[cr/cn/m,cg/cn/m,cb/cn/m],avg=(t0[0]+t0[1]+t0[2])/3;tint=t0.map(v=>Math.min(1,Math.max(0.35,avg+(v-avg)*1.4)));if(Math.max(...tint)-Math.min(...tint)<0.06)tint=[1,0.97,0.9];}
+  return{mxc,myc,tips:[[tminx,tminy],[tmaxx,tmaxy]],tint};
+}
+/* Paint the detailed moon over the photo's moon: tonight's phase, turned to match the photo, sized like the mind's eye */
+function rebuildMoon(ctx,f){
+  const il=moonIllum(new Date()),A=analyzeMoon(DET);
+  let cx=DET.cx,cy=DET.cy,R=DET.r,rot=(MOON?MOON.q:0),usedImg=false;
+  if(A&&il.fraction<0.55){
+    const [p,q]=A.tips,hx=(p[0]+q[0])/2,hy=(p[1]+q[1])/2,hr=Math.hypot(p[0]-q[0],p[1]-q[1])/2;
+    if(hr>DET.r*0.6&&hr<DET.r*2.2){cx=hx;cy=hy;R=hr;
+      const lx=A.mxc-cx,ly=A.myc-cy;if(Math.hypot(lx,ly)>R*0.15){const aImg=Math.atan2(-ly,lx),aMap=Math.atan2(Math.cos(il.angle),-Math.sin(il.angle));rot=aMap-aImg;usedImg=true;}}
+  }else if(A){R=Math.max(R,DET.r);}
+  // how far the photo's glare spreads: walk outward until the sky is back to its normal level
+  let Rg=R*2,GLOW=0;{const prof=[];for(let k=0;k<=28;k++){const rr=R*(1.2+k*0.2),v=[];for(let a=0;a<36;a++){const x=Math.round(cx+Math.cos(a/36*6.283)*rr),y=Math.round(cy+Math.sin(a/36*6.283)*rr);if(x<0||y<0||x>=SRC.width||y>=SRC.height)continue;v.push(lumOf(SCTX.getImageData(x,y,1,1).data,0));}v.sort((p,q)=>p-q);prof.push({rr,l:v.length?v[Math.floor(v.length*0.75)]:0});}
+    const bg=(prof[26].l+prof[27].l+prof[28].l)/3,pk=Math.max(...prof.slice(0,5).map(p=>p.l));GLOW=Math.max(0,(prof[2].l-bg)/255);for(const p of prof){if(p.l<=bg+0.04*Math.max(0,pk-bg)){Rg=p.rr;break;}Rg=p.rr;}
+    Rg=Math.min(R*6,Math.max(R*1.8,Rg*1.1));}
+  const Rn=R*f,S=Math.max(16,Math.round(2*Rn)),Rf=Rg,Lh=Math.ceil(Math.max(Rn*1.9,Rf*1.22,Rn*1.85*1.05)),Lsz=2*Lh;
+  const L=mk(Lsz,Lsz),lx=L.getContext('2d',{willReadFrequently:true});
+  // 1) cover the photo's moon and its glare with a smooth blend of the surrounding sky
+  {const ox0=Math.round(cx-Lh),oy0=Math.round(cy-Lh),sc=Math.min(1,160/Lsz),sw=Math.max(8,Math.round(Lsz*sc));
+   const sm=mk(sw,sw),sx=sm.getContext('2d',{willReadFrequently:true});sx.drawImage(SRC,ox0,oy0,Lsz,Lsz,0,0,sw,sw);
+   const sd=sx.getImageData(0,0,sw,sw),q=sd.data,n=sw*sw,sky0=skyRef(cx,cy,Math.min(R*2.6,Rf*1.1));
+   const M=new Uint8Array(n),ch=[new Uint8Array(n),new Uint8Array(n),new Uint8Array(n)];
+   const ringL=[];for(let i=0;i<n;i++){const rr=Math.hypot(i%sw-sw/2,((i/sw)|0)-sw/2)/sc;if(rr>Rf*1.02&&rr<Rf*1.2)ringL.push(lumOf(q,i*4));}ringL.sort((p,q2)=>p-q2);const ringMed=ringL.length?ringL[ringL.length>>1]:sky0;
+   for(let i=0;i<n;i++){const x=i%sw,y=(i/sw)|0,rr=Math.hypot(x-sw/2,y-sw/2)/sc;const fg=ringMed>14&&lumOf(q,i*4)<ringMed*0.7;
+     const keep=rr>Rf*1.02&&!fg;M[i]=keep?255:0;for(let c=0;c<3;c++)ch[c][i]=keep?q[i*4+c]:0;}
+   const r1=Math.max(2,Math.round(Rf*sc*0.6)),r2=Math.max(3,Math.round(Rf*sc*1.2)),Mb=blur(M,sw,sw,r1,4),Cb=ch.map(c=>blur(c,sw,sw,r1,4)),Mb2=blur(M,sw,sw,r2,4),Cb2=ch.map(c=>blur(c,sw,sw,r2,4));
+   let fb=[0,0,0],fn=0;for(let i=0;i<n;i++)if(M[i]){for(let c=0;c<3;c++)fb[c]+=q[i*4+c];fn++;}fb=fb.map(v=>fn?v/fn:10);
+   for(let i=0;i<n;i++){const w1=smooth(10,60,Mb[i]),w2=smooth(4,30,Mb2[i]);for(let c=0;c<3;c++){const v1=Mb[i]?Cb[c][i]*255/Mb[i]:0,v2=Mb2[i]?Cb2[c][i]*255/Mb2[i]:fb[c],v=w1*v1+(1-w1)*(w2*v2+(1-w2)*fb[c]);q[i*4+c]=Math.min(255,v);}q[i*4+3]=255;}
+   sx.putImageData(sd,0,0);
+   lx.save();lx.beginPath();lx.arc(Lh,Lh,Rf,0,7);lx.clip();lx.imageSmoothingQuality='high';lx.drawImage(sm,0,0,Lsz,Lsz);lx.restore();
+   // feather the edge and add a whisper of grain so it blends with the photo
+   const fd=lx.getImageData(0,0,Lsz,Lsz),f_=fd.data;
+   for(let y=0;y<Lsz;y++)for(let x=0;x<Lsz;x++){const i=(y*Lsz+x)*4;if(!f_[i+3])continue;const rr=Math.hypot(x-Lh,y-Lh);f_[i+3]=255*(1-smooth(Rf*0.72,Rf,rr));const j=(Math.random()-0.5)*3;f_[i]+=j;f_[i+1]+=j;f_[i+2]+=j;}
+   lx.putImageData(fd,0,0);}
+  const FD=lx.getImageData(0,0,Lsz,Lsz).data,FL=lumaPlane(FD,Lsz*Lsz);   // the sky estimate, used below to spot trees in front
+  // 2) soft glow in the moon's own color, then the detailed moon itself (dark side lets the sky through)
+  const tn=A?A.tint:[1,0.97,0.9],tc=tn.map(v=>Math.round(v*255)).join(','),ga=Math.min(0.45,Math.max(0.04,GLOW*1.6));
+  lx.globalCompositeOperation='screen';
+  const gR=Math.max(Rn*1.85,Rf*1.05),gl=lx.createRadialGradient(Lh,Lh,Rn*0.85,Lh,Lh,gR);gl.addColorStop(0,`rgba(${tc},${ga.toFixed(2)})`);gl.addColorStop(0.45,`rgba(${tc},${(ga*0.35).toFixed(2)})`);gl.addColorStop(1,`rgba(${tc},0)`);lx.fillStyle=gl;lx.fillRect(0,0,Lsz,Lsz);
+  const mc=mk(S,S);renderMoon(mc,{inc:il.inc,chi:il.angle,rot,tint:tn,earth:0});
+  {const mx_=mc.getContext('2d',{willReadFrequently:true}),md_=mx_.getImageData(0,0,S,S),m_=md_.data;   // unlit side becomes see-through, so the real sky shows
+   let pk=1;for(let i=0;i<m_.length;i+=4)if(m_[i+3]>200)pk=Math.max(pk,m_[i],m_[i+1],m_[i+2]);const gain=Math.min(2.2,248/pk);
+   for(let i=0;i<m_.length;i+=4){m_[i]=Math.min(255,m_[i]*gain);m_[i+1]=Math.min(255,m_[i+1]*gain);m_[i+2]=Math.min(255,m_[i+2]*gain);const L=Math.max(m_[i],m_[i+1],m_[i+2]);m_[i+3]=m_[i+3]*Math.min(1,L/60);}mx_.putImageData(md_,0,0);}
+  lx.globalCompositeOperation='source-over';
+  lx.drawImage(mc,Lh-S/2,Lh-S/2,S,S);
+  lx.globalCompositeOperation='source-over';
+  // 3) keep trees, poles and wires in front: anything darker than the sky, or clearly darker than its own surroundings
+  const ox=Math.round(cx-Lh),oy=Math.round(cy-Lh),sky=skyRef(cx,cy,Rf/1.7);
+  if($('fgChk').checked){
+    const md=lx.getImageData(0,0,Lsz,Lsz),m=md.data,sx0=Math.max(0,ox),sy0=Math.max(0,oy),sx1=Math.min(SRC.width,ox+Lsz),sy1=Math.min(SRC.height,oy+Lsz);
+    if(sx1>sx0&&sy1>sy0){const ow=sx1-sx0,oh=sy1-sy0,od=SCTX.getImageData(sx0,sy0,ow,oh).data,Yl=lumaPlane(od,ow*oh),Yb=blur(Yl,ow,oh,Math.max(2,Math.round(R*0.6)),2);
+      for(let y=0;y<Lsz;y++){const gy=oy+y;if(gy<sy0||gy>=sy1)continue;for(let x=0;x<Lsz;x++){const gx=ox+x;if(gx<sx0||gx>=sx1)continue;const j=(gy-sy0)*ow+(gx-sx0),l=Yl[j];
+        let k=1;if(sky>18)k=Math.min(k,smooth(sky*0.4,sky*0.72,l));
+        const li=y*Lsz+x;if(FD[li*4+3]>128&&FL[li]>18&&Math.hypot(gx-cx,gy-cy)>R*2.2)k=Math.min(k,smooth(0.62,0.86,l/FL[li]));if(Yb[j]>30&&Math.hypot(gx-cx,gy-cy)>R*2.2)k=Math.min(k,smooth(0.55,0.8,l/Yb[j]));
+        if(Yb[j]>20&&Math.hypot(gx-cx,gy-cy)>R*2.2&&!(FD[li*4+3]>128&&l>FL[li]*1.35))k=Math.min(k,1-smooth(0.14,0.32,Math.abs(l-Yb[j])/Yb[j]));   // thin poles and wires, lit or dark
+        if(k<1)m[(y*Lsz+x)*4+3]*=k;}}
+      lx.putImageData(md,0,0);}
+  }
+  ctx.drawImage(L,ox,oy);
+  return{usedImg,pct:Math.round(il.fraction*100)};
 }
 
 function drawPreview(){
@@ -738,6 +825,9 @@ function render(){
   alertMsg(`Found the moon ✓ (${Math.round(DET.r*2)} px wide in a ${SRC.width} px photo)`);
 
   const out=mk(SRC.width,SRC.height),ox_=out.getContext('2d');ox_.drawImage(SRC,0,0);
+  let REB=null;
+  if($('rebuildChk').checked&&TEX.ready){REB=rebuildMoon(ox_,f);}
+  else{
   const {cx,cy,r}=DET,R=r*1.4;
   let S=Math.round(2*R*f);S=Math.min(S,4096);const fr=S/(2*R);
   const m=mk(S,S),mx=m.getContext('2d',{willReadFrequently:true});
@@ -763,11 +853,12 @@ function render(){
     }
   }
   ox_.drawImage(m,ox,oy);
+  }
   if($('cleanChk').checked&&CLEANINFO){const od=ox_.getImageData(0,0,out.width,out.height);sharpenData(od.data,out.width,out.height,1,0.6,Math.max(1.5,CLEANINFO.after*2.5));ox_.putImageData(od,0,0);
     const cut=Math.max(0,Math.round((1-CLEANINFO.after/Math.max(CLEANINFO.before,0.01))*100));
     const ok=CLEANINFO.after<=1.2;setClean(ok?'Crystal-clear check passed':'Cleaned · some grain left',ok?'b-good':'b-wait');
     const tick_='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7be0a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%','Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');
+    const items=[(CLEANINFO.merged>1?CLEANINFO.merged+' shots merged':'Single shot'),'Grain cut '+cut+'%',REB?`Moon rebuilt · ${REB.pct}% phase`:'Moon sharpened'];if($('fgChk').checked)items.push('Trees kept in front');
     $('checks').innerHTML=items.map(t=>`<div>${tick_}${t}</div>`).join('');$('checks').classList.remove('hidden');
     if(!ok)$('cleanMsg').textContent+=' (merge 3–5 shots for cleaner)';}
   else if(!$('cleanChk').checked){setClean('Clean-up off: showing the photo as shot','b-off');$('checks').classList.add('hidden');}
@@ -783,6 +874,7 @@ $('retakeBtn').onclick=()=>{if(STREAM){$('liveWrap').scrollIntoView({behavior:'s
 $('autoChk').onchange=()=>SRC&&render();
 let rt=null;$('sizeRange').oninput=()=>{$('autoChk').checked=false;$('sizeVal').textContent=(+$('sizeRange').value).toFixed(1)+'x';clearTimeout(rt);rt=setTimeout(()=>SRC&&render(),180);};
 $('fgChk').onchange=()=>SRC&&render();
+$('rebuildChk').onchange=()=>SRC&&render();
 $('warmChk').onchange=()=>SRC&&render();
 
 /* ---------- Live camera: see the mind's-eye moon while aiming, burst-capture on tap ---------- */
