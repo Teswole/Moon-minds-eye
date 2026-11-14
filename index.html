@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v1.6 — 2026-11-14 4:05 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v1.7 — 2026-11-14 4:50 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -161,7 +161,7 @@
         <div id="wxChips" class="wxChips"></div>
         <div id="wxMap"><div class="wxMsg">Loading the live map…</div><div id="wxFrame" class="hidden"></div></div>
         <div class="wxBtns"><button id="wxRadarBtn" class="on" type="button">Rain radar</button><button id="wxCloudBtn" type="button">Clouds now</button><button id="wxPlayBtn" type="button">Play radar</button></div>
-        <p class="mute small" style="margin:8px 0 0">The gold line points toward the moon. Clouds along it matter most for a low moon. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a> · Radar &amp; clouds (US): NEXRAD and NOAA GOES-East via <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a> · Outside the US: <a href="https://www.rainviewer.com/">Weather data by RainViewer</a> · Map © OpenStreetMap, © CARTO</p>
+        <p class="mute small" style="margin:8px 0 0">The gold line points toward the moon. Clouds along it matter most for a low moon. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a> · Radar &amp; clouds (US): NEXRAD and NOAA GOES-East via <a href="https://mesonet.agron.iastate.edu/">Iowa Environmental Mesonet</a> · Outside the US: <a href="https://www.rainviewer.com/">Weather data by RainViewer</a> · Map © Esri, © OpenStreetMap contributors</p>
       </div>
       <div class="card glass">
         <h2>Big-moon alerts</h2>
@@ -1177,7 +1177,10 @@ async function initMap(){
   try{await loadLeaflet();}catch(e){box.querySelector('.wxMsg').textContent='The live map couldn’t load. Check your connection.';return;}
   box.querySelector('.wxMsg').remove();
   WX.map=L.map(box,{zoomControl:false,attributionControl:true,minZoom:3,maxZoom:12}).setView([LOC.lat,LOC.lng],7);
-  WX.base=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap contributors © CARTO'}).addTo(WX.map);
+  // background map: Esri dark gray (free, no key), with its matching layer of town names on top of the weather
+  WX.base=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'Map © Esri, HERE, Garmin, © OpenStreetMap contributors'}).addTo(WX.map);
+  WX.map.createPane('wxLabels');WX.map.getPane('wxLabels').style.zIndex=450;WX.map.getPane('wxLabels').style.pointerEvents='none';
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,pane:'wxLabels'}).addTo(WX.map);
   L.circleMarker([LOC.lat,LOC.lng],{radius:6,color:'#fff',weight:2,fillColor:'#f5c76b',fillOpacity:1}).addTo(WX.map);
   drawMoonLine();await loadRadar();setMode('radar');
   WX.map.on('moveend',()=>{if(WX.mode==='clouds'&&!inUS())updateClouds();});
