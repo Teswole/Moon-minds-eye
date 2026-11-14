@@ -1,4 +1,4 @@
-# 2026-11-14 4:25 PM CST — check that every live weather source the Moon page uses is answering
+# 2026-11-14 4:45 PM CST — check that every live weather source the Moon page uses is answering
 name: Weather sources check
 on:
   workflow_dispatch:
@@ -27,8 +27,10 @@ jobs:
           check "RainViewer tile z7   " "$host$path/256/7/30/53/2/1_1.png"
           check "NOAA NESDIS IR image " "https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_current/ImageServer/exportImage?bbox=-100,25,-85,37&bboxSR=4326&imageSR=3857&size=400,300&format=png&transparent=true&f=image"
           check "CARTO dark map tile  " "https://a.basemaps.cartocdn.com/dark_all/6/15/26.png"
+          check "Esri dark gray tile  " "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/6/26/15"
+          check "OSM standard tile    " "https://tile.openstreetmap.org/6/15/26.png"
           check "Leaflet library      " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
           check "Leaflet styles       " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
       - name: Print sample images (base64) for review
         run: |
-          for f in samples/*; do case "$f" in *IEM_radar_now*|*IEM_GOES*|*RainViewer_tile_z6*|*RainViewer_tile_z7*|*NOAA*) echo "B64 $(basename $f) $(base64 -w0 $f)";; esac; done
+          for f in samples/*; do case "$f" in *IEM_radar_now*|*IEM_GOES*|*RainViewer_tile_z6*|*Esri*|*OSM*|*CARTO*) echo "B64 $(basename $f) $(base64 -w0 $f)";; esac; done
