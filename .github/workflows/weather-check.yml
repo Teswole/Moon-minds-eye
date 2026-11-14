@@ -1,4 +1,4 @@
-# 2026-11-14 4:15 PM CST — check that every live weather source the Moon page uses is answering
+# 2026-11-14 4:25 PM CST — check that every live weather source the Moon page uses is answering
 name: Weather sources check
 on:
   workflow_dispatch:
@@ -13,7 +13,8 @@ jobs:
         run: |
           set +e
           ua="Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
-          check(){ name="$1"; url="$2"; out=$(curl -sS -A "$ua" -H "Origin: https://moon-minds-eye.onrender.com" -o /tmp/body -D /tmp/head -w "%{http_code} %{content_type} %{size_download}" "$url"); cors=$(grep -i '^access-control-allow-origin' /tmp/head | tr -d '\r'); echo "RESULT $name | $out | ${cors:-no CORS header}"; }
+          mkdir -p samples; n=0
+          check(){ name="$1"; url="$2"; n=$((n+1)); out=$(curl -sS -A "$ua" -H "Origin: https://moon-minds-eye.onrender.com" -o /tmp/body -D /tmp/head -w "%{http_code} %{content_type} %{size_download}" "$url"); cors=$(grep -i '^access-control-allow-origin' /tmp/head | tr -d '\r'); echo "RESULT $name | $out | ${cors:-no CORS header}"; cp /tmp/body "samples/$n-$(echo $name | tr -c 'A-Za-z0-9' '_').bin"; }
           check "IEM radar now        " "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/6/15/26.png"
           check "IEM radar 50 min ago " "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913-m50m/6/15/26.png"
           check "IEM GOES-East IR     " "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_east_conus_ch13/6/15/26.png"
@@ -21,8 +22,14 @@ jobs:
           check "RainViewer list      " "https://api.rainviewer.com/public/weather-maps.json"
           host=$(python3 -c "import json;d=json.load(open('/tmp/body'));print(d['host'])" 2>/dev/null)
           path=$(python3 -c "import json;d=json.load(open('/tmp/body'));print(d['radar']['past'][-1]['path'])" 2>/dev/null)
+          check "RainViewer tile z5   " "$host$path/256/5/7/13/2/1_1.png"
           check "RainViewer tile z6   " "$host$path/256/6/15/26/2/1_1.png"
+          check "RainViewer tile z7   " "$host$path/256/7/30/53/2/1_1.png"
           check "NOAA NESDIS IR image " "https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_current/ImageServer/exportImage?bbox=-100,25,-85,37&bboxSR=4326&imageSR=3857&size=400,300&format=png&transparent=true&f=image"
           check "CARTO dark map tile  " "https://a.basemaps.cartocdn.com/dark_all/6/15/26.png"
           check "Leaflet library      " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
           check "Leaflet styles       " "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weather-samples
+          path: samples/
