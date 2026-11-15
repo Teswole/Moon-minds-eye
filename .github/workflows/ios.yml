@@ -1,4 +1,4 @@
-# 2026-11-15 1:50 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
+# 2026-11-15 1:55 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
 name: iPhone app
 
 on:
@@ -49,6 +49,7 @@ jobs:
         run: |
           # trim stray spaces or line breaks from pasted IDs, then check their shape (lengths only, never the values)
           ASC_KEY_ID=$(printf '%s' "$ASC_KEY_ID" | tr -cd 'A-Za-z0-9'); ASC_ISSUER_ID=$(printf '%s' "$ASC_ISSUER_ID" | tr -cd 'a-fA-F0-9-'); APPLE_TEAM_ID=$(printf '%s' "$APPLE_TEAM_ID" | tr -cd 'A-Za-z0-9')
+          H=$(printf '%s' "$ASC_ISSUER_ID" | tr -cd 'a-fA-F0-9'); [ ${#H} -eq 32 ] && ASC_ISSUER_ID="${H:0:8}-${H:8:4}-${H:12:4}-${H:16:4}-${H:20:12}"   # put back dashes the phone dropped
           echo "Key ID: ${#ASC_KEY_ID} characters (should be 10) | Issuer ID: ${#ASC_ISSUER_ID} characters (should be 36) | Team ID: ${#APPLE_TEAM_ID} characters (should be 10)"
           KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
           # Rebuild the key cleanly: phone copy-paste can merge lines or turn the dashes into long dashes
