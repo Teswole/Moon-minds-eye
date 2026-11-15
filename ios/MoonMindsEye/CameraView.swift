@@ -1,4 +1,4 @@
-// 2026-11-14 3:50 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-14 8:20 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -122,7 +122,7 @@ struct OptionsSheet: View {
             Form {
                 Section {
                     Toggle("Rebuild the moon in full detail", isOn: $camera.rebuildMoon)
-                    Toggle("Mind's-eye sky (twilight blue, crisp outlines)", isOn: $camera.mindsEyeSky)
+                    Toggle("Brighten the night sky to twilight blue", isOn: $camera.mindsEyeSky)
                     Toggle("AI sky detection", isOn: $camera.aiSky)
                 } footer: {
                     Text("AI sky detection downloads a small model the first time it's used (Wi-Fi is best). Your photos stay on your phone.")

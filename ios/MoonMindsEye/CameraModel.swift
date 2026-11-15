@@ -1,4 +1,4 @@
-// 2026-11-14 3:50 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
+// 2026-11-14 8:20 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
 import AVFoundation
 import UIKit
 import Photos
@@ -20,7 +20,7 @@ final class CameraModel: NSObject, ObservableObject {
     @Published var lastChecks = ""
     @Published var showResult = false
     @Published var rebuildMoon = true
-    @Published var mindsEyeSky = true
+    @Published var mindsEyeSky = false
     @Published var aiSky = true
     @Published var moonExposure = true {
         didSet { sessionQueue.async { self.applyPreviewExposure() } }
