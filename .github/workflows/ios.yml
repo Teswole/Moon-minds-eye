@@ -1,4 +1,4 @@
-# 2026-11-15 2:05 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
+# 2026-11-15 2:10 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
 name: iPhone app
 
 on:
@@ -62,7 +62,7 @@ jobs:
           xcodebuild archive -project MoonMindsEye.xcodeproj -scheme MoonMindsEye \
             -destination 'generic/platform=iOS' -configuration Release \
             -archivePath "$RUNNER_TEMP/MoonMindsEye.xcarchive" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" -quiet
