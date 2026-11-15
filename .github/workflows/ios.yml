@@ -1,4 +1,4 @@
-# 2026-11-14 3:55 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
+# 2026-11-15 1:45 PM CST — Build the iPhone app on GitHub's Macs; send it to TestFlight once the Apple secrets are added
 name: iPhone app
 
 on:
@@ -48,7 +48,11 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
-          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          # Rebuild the key cleanly: phone copy-paste can merge lines or turn the dashes into long dashes
+          BODY=$(printf '%s' "$ASC_KEY_P8" | tr -d '\r' | sed -E 's/[—–‒]+/-----/g; s/-+ *(BEGIN|END) [A-Z ]*KEY *-+//g' | tr -cd 'A-Za-z0-9+/=')
+          { echo "-----BEGIN PRIVATE KEY-----"; echo "$BODY" | fold -w 64; echo "-----END PRIVATE KEY-----"; } > "$KEY"
+          echo "Key text: ${#BODY} characters (a normal Apple key is about 200)"
+          openssl pkey -in "$KEY" -noout && echo "Key reads OK" || { echo "The ASC_KEY_P8 secret isn't a complete Apple key. Paste the whole .p8 file text again."; exit 1; }
           cd ios
           xcodebuild archive -project MoonMindsEye.xcodeproj -scheme MoonMindsEye \
             -destination 'generic/platform=iOS' -configuration Release \
