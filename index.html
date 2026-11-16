@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.0 — 2026-11-14 8:20 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.1 — 2026-11-15 6:15 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -841,14 +841,16 @@ function analyzeMoon(d){
   let n=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,cr=0,cg=0,cb=0,cn=0;const P=[];
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,L=lumOf(px,i);
     if(L>=t){const X=x0+x,Y=y0+y;if(Math.hypot(X-d.cx,Y-d.cy)>d.r*1.6)continue;P.push(X,Y);n++;sx+=X;sy+=Y;sxx+=X*X;syy+=Y*Y;sxy+=X*Y;}   // only the moon itself, not lit poles nearby
-    if(L>=mx*0.6){cr+=px[i];cg+=px[i+1];cb+=px[i+2];cn++;}}
+    const top=Math.max(px[i],px[i+1],px[i+2]);if(L>=mx*0.3&&top<246&&Math.hypot(x0+x-d.cx,y0+y-d.cy)<=d.r*2.2){const wt=L/255;cr+=px[i]*wt;cg+=px[i+1]*wt;cb+=px[i+2]*wt;cn+=wt;}}   // unclipped pixels only: white blown-out ones carry no color
   if(n<6)return null;
   const mxc=sx/n,myc=sy/n,a=sxx/n-mxc*mxc,b=sxy/n-mxc*myc,c=syy/n-myc*myc;
   const th=0.5*Math.atan2(2*b,a-c),ux=Math.cos(th),uy=Math.sin(th);
   // horn tips = the two ends of the bright shape along its long axis (they mark a full diameter)
   let pmin=1e9,pmax=-1e9,tminx=0,tminy=0,tmaxx=0,tmaxy=0;
   for(let k=0;k<P.length;k+=2){const p=(P[k]-mxc)*ux+(P[k+1]-myc)*uy;if(p<pmin){pmin=p;tminx=P[k];tminy=P[k+1];}if(p>pmax){pmax=p;tmaxx=P[k];tmaxy=P[k+1];}}
-  let tint=[1,0.97,0.9];if(cn>4){const m=Math.max(cr,cg,cb)/cn||1;const t0=[cr/cn/m,cg/cn/m,cb/cn/m],avg=(t0[0]+t0[1]+t0[2])/3;tint=t0.map(v=>Math.min(1,Math.max(0.35,avg+(v-avg)*1.4)));if(Math.max(...tint)-Math.min(...tint)<0.06)tint=[1,0.97,0.9];}
+  const eye=eyeMoonColor(MOON?MOON.alt:null);let tint=eye;
+  if(cn>3){const m=Math.max(cr,cg,cb)/cn||1,t0=[cr/cn/m,cg/cn/m,cb/cn/m];
+    if(Math.max(...t0)-Math.min(...t0)>=0.05)tint=t0.map((v,k)=>Math.min(1,Math.max(0.3,0.7*v+0.3*eye[k])));}   // real photo color, steadied by what the eye sees
   return{mxc,myc,tips:[[tminx,tminy],[tmaxx,tmaxy]],tint};
 }
 /* Paint the detailed moon over the photo's moon: tonight's phase, turned to match the photo, sized like the mind's eye */
@@ -1304,6 +1306,13 @@ drawStars();addEventListener('resize',()=>{clearTimeout(window._st);window._st=s
 const TEX={ready:false};
 function loadTex(){return Promise.all(['moon-albedo.png','moon-normal.png'].map(src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;}))).then(([a,n])=>{
   const S=a.width,c=mk(S,S),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(a,0,0);TEX.A=x.getImageData(0,0,S,S).data;x.clearRect(0,0,S,S);x.drawImage(n,0,0);TEX.N=x.getImageData(0,0,S,S).data;TEX.S=S;TEX.ready=true;});}
+/* Moon color as the eye sees it at a given height: low moons shine through more air, which removes blue first (orange near the horizon, cream when high) */
+function eyeMoonColor(alt){
+  if(alt==null||!isFinite(alt))return[1,0.97,0.9];
+  const h=Math.max(0.3,alt),X=1/(Math.sin(h*Math.PI/180)+0.50572*Math.pow(h+6.07995,-1.6364));   // how much air the light passes through
+  const T=[0.10,0.18,0.35].map(k=>Math.pow(10,-0.4*k*X)),m=Math.max(...T);
+  return T.map(v=>Math.max(0.3,Math.pow(v/m,0.35))).map((v,k)=>v*[1,0.985,0.95][k]);   // eyes adapt, so the shift looks gentler than raw physics
+}
 function renderMoon(cv,{inc,chi,rot=0,tint=null,earth=0.03}){
   const S=TEX.S,off=mk(S,S),ox=off.getContext('2d'),img=ox.createImageData(S,S),d=img.data,A=TEX.A,N=TEX.N;
   const si=Math.sin(inc),Lx=-Math.sin(chi)*si,Ly=Math.cos(chi)*si,Lz=Math.cos(inc),c=(S-1)/2,R=S/2-3,tr=tint||[1,1,1];
