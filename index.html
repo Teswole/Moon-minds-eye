@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.1 — 2026-11-15 6:15 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.2 — 2026-11-15 6:40 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -36,6 +36,8 @@
   .stat{border-radius:18px;padding:12px}
   .stat b{display:block;font:700 22px "Space Grotesk",sans-serif}
   .stat span{color:var(--mute);font-size:12px}
+  .explain{border-radius:18px;padding:12px 14px;margin-top:10px;font-size:13px;line-height:1.45;color:var(--mute)}
+  .explain p{margin:0 0 6px}.explain p:last-child{margin:0}.explain b{color:var(--ink,#fff);font-weight:600}
   .zone{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
   .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .z-good{color:#8ff0bf}.z-good .dot{background:var(--good);box-shadow:0 0 0 5px rgba(123,224,166,.18)}
@@ -141,6 +143,11 @@
         <div class="stat glass"><b id="alt">–</b><span>Above horizon</span></div>
         <div class="stat glass"><b id="dir">–</b><span id="dirLbl">Heading</span></div>
         <div class="stat glass"><b id="phase">–</b><span>Lit</span></div>
+      </div>
+      <div class="explain glass" id="statHelp">
+        <p><b>Above horizon</b> <span id="hAlt">How high to look. 0° is where the ground meets the sky, 90° is straight up.</span></p>
+        <p><b>Heading</b> <span id="hDir">Which way to face, like on a compass.</span></p>
+        <p><b>Lit</b> <span id="hLit">How much of the moon is shining. 100% is a full moon.</span></p>
       </div>
       <button id="cmpsWidget" class="cmpsWidget glass" type="button" aria-label="Open the compass">
         <svg id="smallCompass" width="96" height="96" viewBox="0 0 200 200" aria-hidden="true"></svg>
@@ -375,6 +382,13 @@ function updateMoon(){
   $('dir').textContent=Math.round(MOON.bearing)+'°';$('dirLbl').textContent=compass(MOON.bearing)+' heading';
   $('dirShort').textContent=compass(MOON.bearing);
   $('phase').textContent=Math.round(il.fraction*100)+'%';
+  {// plain-words help that updates with tonight's numbers (fist held at arm's length is about 10°)
+   const a=MOON.alt,f=Math.round(a/10),pct=Math.round(il.fraction*100),side=DIRNAME[compass(MOON.bearing)];
+   $('hAlt').textContent=a<0?'The moon is below the ground line right now, so you can\'t see it yet. 0° is where the ground meets the sky.':
+     a<1?'Right at the ground line, where the ground meets the sky. This is when it looks the biggest!':
+     `How high to look. Hold your fist out at arm's length: the moon is about ${f<=1?'1 fist':f+' fists'} above where the ground meets the sky. (90° is straight up.)`;
+   $('hDir').textContent=`Which way to face. Turn toward the ${side}. The number is the compass direction: 0° is north, 90° east, 180° south, 270° west.`;
+   $('hLit').textContent=`How much of the moon is shining. ${pct>=98?'It\'s a full moon tonight!':pct<=2?'It\'s a new moon, so it\'s almost all dark.':`About ${pct} out of 100 parts are lit`+(pct<50?', a thin slice.':', more than half.')} 100% is a full moon.`;}
   const dAlt=later.alt-MOON.alt;
   $('moonSub').textContent=(MOON.alt>=0&&Math.abs(dAlt)<0.25)?`At its highest, in the ${DIRNAME[compass(MOON.bearing)]}`:MOON.alt<0?`Below the horizon, ${rising?'rising':'setting'} toward the ${DIRNAME[compass(MOON.bearing)]}`:`${rising?'Rising':'Setting'} in the ${DIRNAME[compass(MOON.bearing)]}`;
   const st=$('status'),tx=$('statusTxt');
