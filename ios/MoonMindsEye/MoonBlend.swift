@@ -1,4 +1,4 @@
-// 2026-11-14 3:50 PM CST — Blend the short "moon" exposure into the normal "scene" photo, so both look right at once
+// 2026-11-18 4:35 PM CST — Blend the short "moon" exposure into the normal "scene" photo, so both look right at once
 import CoreImage
 import CoreGraphics
 import Foundation
@@ -29,6 +29,25 @@ enum MoonBlend {
         let out = lighter.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: s, kCIInputMaskImageKey: mask])
         let cs = s.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
         return context.jpegRepresentation(of: out.cropped(to: s.extent), colorSpace: cs, options: [:])
+    }
+
+    /// How well a moon frame kept its detail: share of the lit moon that is blown out to white, and its peak brightness (0–255).
+    static func moonClip(_ data: Data) -> (clipped: Double, peak: Double)? {
+        guard let img = CIImage(data: data, options: [.applyOrientationProperty: true]), let spot = findMoon(in: img) else { return nil }
+        let r = max(4, spot.radius), box = CGRect(x: spot.center.x - r, y: spot.center.y - r, width: 2 * r, height: 2 * r).intersection(img.extent)
+        let side = 96, sc = CGFloat(side) / max(box.width, box.height)
+        let crop = img.cropped(to: box).transformed(by: CGAffineTransform(translationX: -box.minX, y: -box.minY)).transformed(by: CGAffineTransform(scaleX: sc, y: sc))
+        guard let cg = context.createCGImage(crop, from: CGRect(x: 0, y: 0, width: side, height: side)) else { return nil }
+        var buf = [UInt8](repeating: 0, count: side * side)
+        let ok = buf.withUnsafeMutableBytes { raw -> Bool in
+            guard let ctx = CGContext(data: raw.baseAddress, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: side, height: side)); return true
+        }
+        guard ok, let peak = buf.max(), peak > 20 else { return nil }
+        let lit = buf.filter { Double($0) >= Double(peak) * 0.35 }
+        let clip = lit.filter { $0 >= 250 }.count
+        return (lit.isEmpty ? 1 : Double(clip) / Double(lit.count), Double(peak))
     }
 
     /// Any photo (HEIC or JPEG) as an upright JPEG, for the processor

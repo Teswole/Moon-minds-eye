@@ -1,4 +1,4 @@
-// 2026-11-14 8:20 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-18 4:35 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -57,7 +57,7 @@ struct CameraView: View {
                     .accessibilityLabel("Mind's-eye options")
                 }
                 .padding(.horizontal, 30)
-                Text("One tap takes two exposures: one for the scene, one for the moon")
+                Text("One tap: a scene shot plus 3 metered moon shots; the sharpest real moon is kept. Tip: step back from trees and houses and use the zoom lens, like pros do.")
                     .font(.caption).foregroundStyle(.secondary).padding(.bottom, 14)
             }
             .foregroundStyle(.white)
@@ -158,7 +158,7 @@ struct ResultSheet: View {
                 }
                 Text("Press and hold the picture to see what the camera saw").font(.caption).foregroundStyle(.secondary)
                 Text(camera.lastChecks).font(.footnote).multilineTextAlignment(.center).foregroundStyle(.secondary)
-                Text("Saved to Photos. This is an edited picture: the moon is enlarged and its detail comes from the app's moon map at tonight's phase.")
+                Text("Saved to Photos. This is an edited picture: the moon is enlarged and its detail comes from the camera when it caught it, or from the app's moon map at tonight's phase.")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 Spacer(minLength: 0)
             }

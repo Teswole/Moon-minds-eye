@@ -1,4 +1,4 @@
-// 2026-11-14 8:20 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
+// 2026-11-18 4:35 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
 import AVFoundation
 import UIKit
 import Photos
@@ -14,6 +14,7 @@ final class CameraModel: NSObject, ObservableObject {
     @Published var currentLensID: String?
     @Published var moonPoint: CGPoint?          // in camera-sensor coordinates (0...1)
     @Published var status = "Starting camera…"
+    @Published var meterNote = ""
     @Published var busy = false
     @Published var lastResult: UIImage?
     @Published var lastBefore: UIImage?
@@ -126,24 +127,40 @@ final class CameraModel: NSObject, ObservableObject {
         DispatchQueue.main.async { self.busy = true; self.status = "Hold still…" }
         sessionQueue.async {
             guard let d = self.device else { self.finish(nil, message: "No camera."); return }
-            // 1) Scene: normal exposure for trees, houses and sky
-            self.setAutoExposure(d, bias: 0) {
+            // Pro meter: tonight's moon brightness from its height and phase (pros: ~f/10, 1/160 s, ISO 160 at 600mm)
+            var ev = 12.5
+            if let lat = lat, let lng = lng { let m = MoonMath.moon(Date(), lat: lat, lng: lng); ev = MoonMeter.moonEV(altitude: m.altitude, phaseAngle: m.phaseAngle) }
+            // 1) Scene: like a pro's twilight frame, a touch darker than auto so the sky glow keeps its color
+            self.setAutoExposure(d, bias: -0.3) {
                 self.shoot(quality: .quality) { scene in
-                    // 2) Moon: very short exposure so the moon keeps its detail
-                    self.sessionQueue.async { self.setMoonExposure(d) {
-                        self.shoot(quality: .balanced) { moon in
+                    // 2) Moon: three metered frames (a pro "bracket"), then keep the one with the most real detail
+                    self.bracketMoon(d, ev: ev, offsets: [0, 1, -1], got: []) { frames in
                             self.sessionQueue.async { self.applyPreviewExposure() }
-                            guard let scene = scene, let moon = moon else { self.finish(nil, message: "The photo didn't come through. Try again."); return }
+                            let pick = MoonCameraPick.best(frames)
+                            guard let scene = scene, let moon = pick?.data else { self.finish(nil, message: "The photo didn't come through. Try again."); return }
+                            if let p = pick { DispatchQueue.main.async { self.meterNote = "Moon metered at \(p.label)" } }
                             DispatchQueue.main.async { self.status = "Blending the moon…" }
                             DispatchQueue.global(qos: .userInitiated).async {
                                 let base = MoonBlend.blend(scene: scene, moon: moon) ?? MoonBlend.uprightJPEG(scene) ?? scene
                                 DispatchQueue.main.async { self.runProcessor(base, lat: lat, lng: lng) }
                             }
-                        }
-                    } }
+                    }
                 }
             }
         }
+    }
+
+    /// Take one moon frame per exposure offset (in stops), then hand back all of them
+    private func bracketMoon(_ d: AVCaptureDevice, ev: Double, offsets: [Double], got: [MoonCameraPick.Frame], done: @escaping ([MoonCameraPick.Frame]) -> Void) {
+        guard let off = offsets.first else { done(got); return }
+        let (t, iso) = MoonMeter.settings(for: d, ev: ev, offsetStops: off)
+        sessionQueue.async { self.setMoonExposure(d, duration: t, iso: iso) {
+            self.shoot(quality: .balanced) { data in
+                var list = got
+                if let data = data { list.append(.init(data: data, label: MoonMeter.label(t, iso), offset: off)) }
+                self.bracketMoon(d, ev: ev, offsets: Array(offsets.dropFirst()), got: list, done: done)
+            }
+        } }
     }
 
     /// Step 3: the mind's-eye processor (moon rebuild, sky AI, twilight sky, enlarging)
@@ -165,7 +182,7 @@ final class CameraModel: NSObject, ObservableObject {
             self.save(final)
             self.lastBefore = UIImage(data: base)
             self.lastResult = UIImage(data: final)
-            self.lastChecks = checks
+            self.lastChecks = self.meterNote.isEmpty ? checks : checks + " · " + self.meterNote
             self.status = "Saved to Photos"
             self.busy = false
             self.showResult = true
@@ -182,13 +199,8 @@ final class CameraModel: NSObject, ObservableObject {
         d.unlockForConfiguration()
     }
 
-    private func setMoonExposure(_ d: AVCaptureDevice, then: @escaping () -> Void) {
+    private func setMoonExposure(_ d: AVCaptureDevice, duration: CMTime, iso: Float, then: @escaping () -> Void) {
         guard d.isExposureModeSupported(.custom), (try? d.lockForConfiguration()) != nil else { then(); return }
-        let f = d.activeFormat
-        let iso = min(max(f.minISO, 50), f.maxISO)
-        var duration = CMTime(value: 1, timescale: 1000)   // about 1/1000 s: the sunlit moon is bright
-        if CMTimeCompare(duration, f.minExposureDuration) < 0 { duration = f.minExposureDuration }
-        if CMTimeCompare(duration, f.maxExposureDuration) > 0 { duration = f.maxExposureDuration }
         d.setExposureModeCustom(duration: duration, iso: iso) { _ in
             self.sessionQueue.asyncAfter(deadline: .now() + 0.15) { then() }
         }
@@ -275,5 +287,18 @@ final class PhotoCatcher: NSObject, AVCapturePhotoCaptureDelegate {
     init(done: @escaping (Data?, PhotoCatcher) -> Void) { self.done = done }
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         done(error == nil ? photo.fileDataRepresentation() : nil, self)
+    }
+}
+
+/// Picks the moon frame that kept the most real detail: the brightest one that is not blown out
+enum MoonCameraPick {
+    struct Frame { let data: Data; let label: String; let offset: Double }
+    static func best(_ frames: [Frame]) -> Frame? {
+        let scored = frames.compactMap { f -> (Frame, Double)? in
+            guard let c = MoonBlend.moonClip(f.data) else { return nil }
+            // brighter is better (less grain) until highlights start to clip; clipping is punished hard
+            return (f, c.peak / 255 - 6 * c.clipped)
+        }
+        return scored.max { $0.1 < $1.1 }?.0 ?? frames.first
     }
 }
