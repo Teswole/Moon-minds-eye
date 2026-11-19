@@ -1,4 +1,4 @@
-// 2026-11-18 7:35 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-18 8:40 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -6,6 +6,7 @@ struct CameraView: View {
     @EnvironmentObject var camera: CameraModel
     @EnvironmentObject var location: LocationModel
     @State private var showOptions = false
+    @StateObject private var coach = ShotCoach()
     @State private var live = false          // camera starts only when the person taps Start
     private let gold = Color(red: 0.96, green: 0.78, blue: 0.42)
 
@@ -18,7 +19,7 @@ struct CameraView: View {
                 .ignoresSafeArea(edges: .top)
             VStack {
                 HStack {
-                    Button(action: { camera.stop(); live = false }) {
+                    Button(action: { coach.end(); camera.stop(); live = false }) {
                         Image(systemName: "xmark").font(.headline).frame(width: 40, height: 40)
                             .background(.ultraThinMaterial, in: Circle())
                     }.accessibilityLabel("Stop camera and show tips")
@@ -43,8 +44,7 @@ struct CameraView: View {
                         }
                     }
                 }
-                Toggle("Moon exposure while aiming", isOn: $camera.moonExposure)
-                    .font(.footnote).padding(.horizontal, 40).padding(.top, 6)
+                CoachCard(coach: coach).padding(.bottom, 6)
                 HStack {
                     thumbnail.frame(width: 56, height: 56)
                     Spacer()
@@ -68,15 +68,14 @@ struct CameraView: View {
                     .accessibilityLabel("Mind's-eye options")
                 }
                 .padding(.horizontal, 30)
-                Text("One tap: a scene shot plus 3 metered moon shots; the sharpest real moon is kept. Tip: step back from trees and houses and use the zoom lens, like pros do.")
-                    .font(.caption).foregroundStyle(.secondary).padding(.bottom, 14)
+                Color.clear.frame(height: 10)
             }
             .foregroundStyle(.white)
             }
         }
         .sheet(isPresented: $showOptions) { OptionsSheet().environmentObject(camera).presentationDetents([.medium]) }
         .sheet(isPresented: $camera.showResult) { ResultSheet().environmentObject(camera) }
-        .onDisappear { camera.stop(); live = false }
+        .onDisappear { coach.end(); camera.stop(); live = false }
     }
 
     /// Tips screen shown first, so there is time to read before the camera turns on
@@ -91,11 +90,11 @@ struct CameraView: View {
                     tip("2.circle.fill", "Point at the moon. **Moon locked ✓** means it found it.")
                     tip("3.circle.fill", "Tap **Zoom lens** if you have one, and keep trees or rooftops in the picture.")
                     tip("4.circle.fill", "**Step back** from the trees and houses. The farther away they are, the bigger the moon looks next to them.")
-                    tip("5.circle.fill", "**Hold still** and tap the round button. It takes a scene shot plus 3 metered moon shots and keeps the sharpest real moon.")
+                    tip("5.circle.fill", "**Hold still.** The steps at the bottom check themselves off, and the camera counts 3-2-1 and takes the photo for you.")
                     tip("moon.stars.fill", "Best when the moon is low (under about 10°). Check the green window on the Moon tab.")
                 }
                 .font(.body)
-                Button(action: { live = true; camera.start() }) {
+                Button(action: { live = true; camera.start(); coach.begin(camera: camera, lat: location.coordinate?.latitude, lng: location.coordinate?.longitude) }) {
                     Text("Start camera").font(.headline).foregroundStyle(.black)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
                         .background(gold, in: Capsule())
@@ -171,6 +170,7 @@ struct OptionsSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    Toggle("Moon exposure while aiming", isOn: $camera.moonExposure)
                     Toggle("Rebuild the moon in full detail", isOn: $camera.rebuildMoon)
                     Toggle("Brighten the night sky to twilight blue", isOn: $camera.mindsEyeSky)
                     Toggle("AI sky detection", isOn: $camera.aiSky)
