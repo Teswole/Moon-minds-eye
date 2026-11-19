@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.3 — 2026-11-18 4:30 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.4 — 2026-11-18 9:50 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1319,7 +1319,7 @@ $('wxPlayBtn').onclick=()=>{
 function goTab(v){['moon','camera','loc'].forEach(k=>$('view-'+k).classList.toggle('hidden',k!==v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===v));
   $('topTitle').textContent=v==='moon'?'Tonight':v==='camera'?'Camera':'Location';window.scrollTo({top:0});if(v==='moon')setTimeout(()=>{drawTimeline();if(WX.map)WX.map.invalidateSize();},30);}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>goTab(t.dataset.view));
-$('goLive').onclick=()=>{goTab('camera');rearmAuto();startLive();};
+$('goLive').onclick=()=>{goTab('camera');window.scrollTo({top:0,behavior:'smooth'});};   // show the tips first; the camera starts only from Start live camera
 $('aboutBtn').onclick=()=>$('about').classList.toggle('hidden');
 $('topDate').textContent=new Date().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
