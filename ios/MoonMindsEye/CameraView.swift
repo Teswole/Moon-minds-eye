@@ -1,4 +1,4 @@
-// 2026-11-18 8:40 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-18 10:30 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -149,8 +149,8 @@ struct PreviewView: UIViewRepresentable {
         v.preview.videoGravity = .resizeAspectFill
         v.ring.strokeColor = UIColor(red: 0.96, green: 0.78, blue: 0.42, alpha: 1).cgColor
         v.ring.fillColor = UIColor.clear.cgColor
-        v.ring.lineWidth = 2
-        v.ring.lineDashPattern = [3, 6]
+        v.ring.lineWidth = 4                     // solid and thick so it is easy to see over a bright moon
+        v.ring.shadowColor = UIColor.black.cgColor; v.ring.shadowOpacity = 0.8; v.ring.shadowRadius = 3; v.ring.shadowOffset = .zero
         v.layer.addSublayer(v.ring)
         return v
     }

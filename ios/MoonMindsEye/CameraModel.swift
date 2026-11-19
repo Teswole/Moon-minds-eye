@@ -1,4 +1,4 @@
-// 2026-11-18 4:35 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
+// 2026-11-18 10:30 PM CST — Camera: live view, lens choice, moon finder, two-exposure shot, then the mind's-eye processor
 import AVFoundation
 import UIKit
 import Photos
@@ -31,6 +31,8 @@ final class CameraModel: NSObject, ObservableObject {
     private let videoQueue = DispatchQueue(label: "camera.video")
     private let photoOutput = AVCapturePhotoOutput()
     private let videoOutput = AVCaptureVideoDataOutput()
+    private var aimedAt: CGPoint?            // where focus and brightness are currently measured
+    private var lastAim = Date.distantPast
     private var devices: [String: AVCaptureDevice] = [:]
     private var device: AVCaptureDevice?
     private var input: AVCaptureDeviceInput?
@@ -93,11 +95,13 @@ final class CameraModel: NSObject, ObservableObject {
         session.addInput(newInput)
         input = newInput
         device = d
-        // The moon is at infinity: lock focus far away so it never hunts
+        // Focus far away and let the camera fine-tune it (a fixed lens setting can leave the moon soft on some iPhones)
         if (try? d.lockForConfiguration()) != nil {
-            if d.isFocusModeSupported(.locked) { d.setFocusModeLocked(lensPosition: 1.0, completionHandler: nil) }
+            if d.isAutoFocusRangeRestrictionSupported { d.autoFocusRangeRestriction = .far }
+            if d.isFocusModeSupported(.continuousAutoFocus) { d.focusMode = .continuousAutoFocus }
             d.unlockForConfiguration()
         }
+        aimedAt = nil
         applyPreviewExposure()
     }
 
@@ -115,7 +119,7 @@ final class CameraModel: NSObject, ObservableObject {
     private func applyPreviewExposure() {
         guard let d = device, (try? d.lockForConfiguration()) != nil else { return }
         if d.isExposureModeSupported(.continuousAutoExposure) { d.exposureMode = .continuousAutoExposure }
-        let bias: Float = moonExposure ? max(d.minExposureTargetBias, -2.0) : 0
+        let bias: Float = moonExposure ? max(d.minExposureTargetBias, -1.0) : 0
         d.setExposureTargetBias(bias, completionHandler: nil)
         d.unlockForConfiguration()
     }
@@ -272,11 +276,31 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
                 }
             }
             let samples = Double((w / step) * (h / step))
-            if n > 0 && n < samples * 0.03 {     // small and bright: moon-like, not a lit wall
+            if n > 0 && n < samples * 0.08 {     // small and bright: moon-like, not a lit wall
                 point = CGPoint(x: sx / n / Double(w), y: sy / n / Double(h))
             }
         }
         DispatchQueue.main.async { self.moonPoint = point }
+        aim(at: point)
+    }
+
+    /// Measure focus and brightness on the moon itself, like tapping on it in the Camera app.
+    /// Without this the camera brightens for the dark sky and the moon becomes a soft, blown-out glow.
+    private func aim(at point: CGPoint?) {
+        guard Date().timeIntervalSince(lastAim) > 0.8, !busy else { return }
+        if let p = point, let a = aimedAt, hypot(p.x - a.x, p.y - a.y) < 0.03 { return }   // already aimed here
+        if point == nil && aimedAt == nil { return }
+        lastAim = Date()
+        sessionQueue.async {
+            guard let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
+            let target = point ?? CGPoint(x: 0.5, y: 0.5)
+            if d.isExposurePointOfInterestSupported { d.exposurePointOfInterest = target }
+            if d.isExposureModeSupported(.continuousAutoExposure) { d.exposureMode = .continuousAutoExposure }
+            if d.isFocusPointOfInterestSupported { d.focusPointOfInterest = target }
+            if d.isFocusModeSupported(.continuousAutoFocus) { d.focusMode = .continuousAutoFocus }
+            d.unlockForConfiguration()
+            self.aimedAt = point
+        }
     }
 }
 
