@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.4 — 2026-11-18 9:50 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.5 — 2026-11-19 4:05 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -36,6 +36,14 @@
   .stat{border-radius:18px;padding:12px}
   .stat b{display:block;font:700 22px "Space Grotesk",sans-serif}
   .stat span{color:var(--mute);font-size:12px}
+  .coach{border-radius:18px;padding:12px 14px;margin:10px 0}
+  .cSteps{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+  .cDot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 12px system-ui;background:rgba(255,255,255,.16);color:#fff;flex:none}
+  .cDot.on{background:#f5c76b;color:#1a1400}.cDot.ok{background:#4cd17f;color:#04140a}
+  .cLine{flex:1;height:2px;background:rgba(255,255,255,.16)}.cLine.ok{background:#4cd17f}
+  .cHead{display:flex;justify-content:space-between;align-items:center;font-size:16px}
+  #cRight{font:800 24px system-ui;color:#f5c76b}.cBar{width:70px;height:6px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden;display:inline-block}.cBar i{display:block;height:100%;background:#f5c76b}
+  .cHint{font-size:14px;line-height:1.4;margin-top:4px}.cFact{font-size:13px;color:var(--mute);margin:8px 0}
   .explain{border-radius:18px;padding:12px 14px;margin-top:10px;font-size:13px;line-height:1.45;color:var(--mute)}
   .explain p{margin:0 0 6px}.explain p:last-child{margin:0}.explain b{color:var(--ink,#fff);font-weight:600}
   .zone{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
@@ -195,7 +203,7 @@
         <li>Tap <b>Start live camera</b> and choose <b>Allow</b> when asked.</li>
         <li>Point at the moon. A gold ring or <b>Moon locked ✓</b> means it found it. If it picks a streetlight, <b>tap the moon</b>.</li>
         <li>Use <b>2x, 3x or 5x</b> and keep trees or rooftops in the frame. <b>Step back</b> from them: the farther away they are, the bigger the moon looks next to them.</li>
-        <li><b>Hold still</b> for about 2 seconds. When the moon is low, the photo takes itself, or tap the round button any time.</li>
+        <li><b>Hold still.</b> The steps under the picture check themselves off, and the camera counts 3-2-1 and takes the photo for you.</li>
       </ul>
       <div id="liveMsg" class="mute mt"></div>
       <div id="liveWrap" class="hidden">
@@ -205,11 +213,17 @@
           <div id="liveAlt" class="glass hidden"></div>
         </div>
         <video id="liveVid" playsinline muted autoplay style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></video>
+        <div id="coach" class="coach glass">
+          <div class="cSteps" id="cSteps"></div>
+          <div class="cHead"><b id="cTitle">Find the moon</b><span id="cRight"></span></div>
+          <div id="cHint" class="cHint"></div>
+          <div id="cDone" class="hidden"><p class="cFact" id="cFact"></p><button id="cAgain" class="btn glass">Take another</button></div>
+        </div>
         <div class="chips" id="zoomChips"></div>
         <div class="mute small" style="text-align:center">Zoom <b id="zoomVal">1.0x</b> <span id="zoomKind"></span></div>
         <input id="zoomRange" class="slider hidden" type="range" min="1" max="5" step="0.1" value="1">
         <label class="chk"><input id="livePrevChk" type="checkbox" checked> Show the mind's-eye moon live</label>
-        <label class="chk"><input id="autoShotChk" type="checkbox" checked> Auto-capture when the moon is low and you hold steady</label>
+        <label class="chk"><input id="autoShotChk" type="checkbox" checked> Shot Coach: guide me and take the photo by itself</label>
         <div class="shutterRow"><button id="shutter" aria-label="Take picture"></button></div>
         <p class="mute" style="text-align:center;margin:8px 0 0">Hold steady: 4 frames merge into one crisp shot</p>
         <p class="mute small" style="text-align:center;margin:4px 0 0">Wrong light picked? Tap the moon on the screen.</p>
@@ -1054,10 +1068,63 @@ async function startLive(){
   $('liveStart').classList.add('hidden');$('liveTips').classList.add('hidden');$('liveWrap').classList.remove('hidden');$('liveMsg').textContent='';
   LIVE.det=null;cancelAnimationFrame(LIVE.raf);liveLoop();
 }
+/* ===== Shot Coach: the same kid-friendly steps as the iPhone app; each one checks itself off ===== */
+const FACTS=["The moon is about 239,000 miles away. A car driving nonstop would take about 5 months to get there!","The moon doesn't make its own light. It shines with sunlight bouncing off it.","The moon always shows Earth the same face. Its far side was first photographed in 1959.","12 astronauts have walked on the moon. Their footprints are still there, because there's no wind.","The big dark patches on the moon are old lava plains called 'maria', which means 'seas'.","A low moon looks huge, but it's the same size as a high moon. Your brain makes it look bigger!","The moon moves about 1.5 inches farther from Earth every year.","On the moon you would weigh about 1/6 of what you weigh on Earth. You could jump 6 times higher!","A low moon looks orange because its light passes through more air, which scatters the blue away.","The moon's craters were made by space rocks crashing into it billions of years ago."];
+const STEPS=[['Find the moon',()=>"Point your phone at the moon. When the gold ring circles it, you've got it!"],['Zoom in',()=>'Zooming in to make the moon bigger…'],['Show the ground',()=>'Tilt down a little so trees, houses or rooftops show under the moon. Pros always include the ground!'],['Hold still',()=>'Hold very still, like a statue. Lean on a car, post or fence if you can.'+(MOON&&MOON.alt>10?" (The moon is high tonight. It looks biggest when it's low.)":'')],['Taking your photo',()=>'Keep still… merging 4 frames into one crisp shot.']];
+const CO={step:0,still:0,lost:0,count:null,zoomed:false,shake:0};
+function askMotion(){try{if(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission)DeviceMotionEvent.requestPermission().catch(()=>{});}catch(e){}}
+window.addEventListener('devicemotion',e=>{const r=e.rotationRate;if(r&&r.alpha!=null)CO.shake=Math.hypot(r.alpha,r.beta,r.gamma);CO.hasMotion=true;});   // degrees per second
+function coachBegin(){Object.assign(CO,{step:0,still:0,lost:0,count:null,zoomed:false,anchor:null});$('cDone').classList.add('hidden');coachDraw();}
+function coachDraw(){
+  const box=$('cSteps');box.innerHTML='';
+  STEPS.forEach((st,i)=>{const d=document.createElement('div');d.className='cDot'+(CO.step>i?' ok':CO.step===i?' on':'');d.textContent=CO.step>i?'✓':i+1;box.appendChild(d);
+    if(i<STEPS.length-1){const l=document.createElement('div');l.className='cLine'+(CO.step>i?' ok':'');box.appendChild(l);}});
+  if(CO.step>=STEPS.length){$('cTitle').textContent='You did it! 🎉';$('cHint').textContent="Your mind's-eye photo is ready below. Save it with the Save button.";$('cRight').textContent='';$('cFact').textContent='🌙 Space fact: '+FACTS[Math.floor(Math.random()*FACTS.length)];$('cDone').classList.remove('hidden');return;}
+  $('cTitle').textContent=STEPS[CO.step][0];$('cHint').textContent=CO.count?'Get ready…':STEPS[CO.step][1]();
+  $('cRight').innerHTML=CO.count?CO.count:CO.step===3?`<span class="cBar"><i style="width:${Math.round(CO.still*100)}%"></i></span>`:'';
+}
+function coachGo(n){CO.step=n;CO.still=0;CO.anchor=null;coachDraw();}
+function coachTick(D){
+  if(!$('autoShotChk').checked||CO.step>=4)return;
+  const t=performance.now();
+  if(!D){if(!CO.lost)CO.lost=t;if(CO.step>0&&t-CO.lost>2000){CO.count=null;coachGo(0);}return;}
+  CO.lost=0;
+  if(CO.step===0)return coachGo(1);
+  if(CO.step===1){   // zoom in for them: the biggest lens zoom up to 5x
+    if(!CO.zoomed){CO.zoomed=true;const chips=[...$('zoomChips').children];const best=chips[chips.length-1];if(best&&best.textContent!=='1x'){best.click();return;}}
+    return coachGo(2);}
+  if(CO.step===2){if(D.cy<0.5)coachGo(3);return;}
+  if(CO.step===3){
+    const moved=CO.anchor?Math.hypot(D.cx-CO.anchor.x,D.cy-CO.anchor.y):1;
+    const steady=CO.hasMotion?CO.shake<5&&moved<0.03:moved<0.015;
+    if(!CO.anchor||!steady){CO.anchor={x:D.cx,y:D.cy};CO.stillT=t;CO.still=0;}
+    else{CO.still=Math.min(1,(t-CO.stillT)/2000);if(CO.still>=1&&!CO.count)coachCount();}
+    coachDraw();}
+}
+function coachCount(){
+  CO.count=3;coachDraw();
+  const step=()=>setTimeout(()=>{
+    if(!CO.count)return;
+    if(!LIVE.det||(CO.hasMotion&&CO.shake>9)){CO.count=null;CO.anchor=null;coachDraw();return;}   // moved: try again
+    if(CO.count>1){CO.count--;coachDraw();step();}
+    else{CO.count=null;coachGo(4);Promise.resolve($('shutter').onclick()).then(()=>{CO.step=5;coachDraw();});}
+  },1000);
+  step();
+}
+/* Measure focus and brightness on the moon itself, when the browser allows it (like tapping the moon in the Camera app) */
+function aimAtMoon(D){
+  if(!TRACK||!TRACK.getCapabilities)return;const t=performance.now();if(t-(LIVE.aimT||0)<1000)return;LIVE.aimT=t;
+  let caps={};try{caps=TRACK.getCapabilities();}catch(e){return;}
+  const adv={};if(caps.pointsOfInterest||'pointsOfInterest' in (TRACK.getSettings?TRACK.getSettings():{}))adv.pointsOfInterest=[{x:D.cx,y:D.cy}];
+  if(caps.exposureCompensation)adv.exposureCompensation=Math.max(caps.exposureCompensation.min,-1);
+  if(caps.focusMode&&caps.focusMode.includes('continuous'))adv.focusMode='continuous';
+  if(Object.keys(adv).length)TRACK.applyConstraints({advanced:[adv]}).catch(()=>{});
+}
+$('cAgain').onclick=()=>{coachBegin();$('liveView').scrollIntoView({behavior:'smooth',block:'center'});};
 function rearmAuto(){LIVE.autoDone=false;LIVE.anchor=null;LIVE.steadySince=0;}
 function stopLive(){cancelAnimationFrame(LIVE.raf);if(STREAM)STREAM.getTracks().forEach(t=>t.stop());STREAM=null;TRACK=null;LIVE.det=null;$('liveWrap').classList.add('hidden');$('liveStart').classList.remove('hidden');$('liveTips').classList.remove('hidden');}
 function buildChips(min,max){const box=$('zoomChips');box.innerHTML='';[1,2,3,5].filter(z=>z>=min&&z<=max).forEach(z=>{const b=document.createElement('button');b.type='button';b.className='chip glass'+(z===1?' on':'');b.textContent=z+'x';b.onclick=()=>{$('zoomRange').value=z;$('zoomRange').dispatchEvent(new Event('input'));[...box.children].forEach(c=>c.classList.toggle('on',c===b));};box.appendChild(b);});}
-$('liveStart').onclick=()=>{rearmAuto();startLive();};
+$('liveStart').onclick=()=>{rearmAuto();askMotion();startLive().then(()=>coachBegin());};
 $('autoShotChk').onchange=rearmAuto;$('liveStop').onclick=stopLive;
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&STREAM)stopLive();});
 let zt=null;
@@ -1083,20 +1150,12 @@ function liveLoop(){
   }
   const la=$('liveAlt');if(MOON){la.classList.remove('hidden');la.textContent=MOON.alt.toFixed(0)+'° up';}
   const b=$('liveBadge');
-  if(!LIVE.det){b.className='badge b-off';b.textContent=MOON&&MOON.alt<0?'The moon is below the horizon right now':'Looking for the moon… tap it if you see it';return;}
+  if(!LIVE.det){coachTick(null);b.className='badge b-off';b.textContent=MOON&&MOON.alt<0?'The moon is below the horizon right now':'Looking for the moon… tap it if you see it';return;}
   const D=LIVE.det,cx=D.cx*dw,cy=D.cy*dh,r=Math.max(2,D.r*dw),f=autoFactorFor(c.w,D.r*c.w).f;
   const prev=$('livePrevChk').checked;
   b.className='badge b-good';b.textContent=prev?`Moon locked ✓ ${f.toFixed(1)}x mind's eye`:'Moon locked ✓';
-  // auto-capture: moon low (or height unknown) and the phone steady for about 1.5 seconds
-  if($('autoShotChk').checked&&!LIVE.autoDone&&!LIVE.busy){
-    const low=!MOON||(MOON.alt>=-1&&MOON.alt<=15),tnow=performance.now();
-    const moved=LIVE.anchor?Math.hypot(D.cx-LIVE.anchor.x,D.cy-LIVE.anchor.y):1;
-    if(!low){LIVE.steadySince=0;}
-    else if(moved>0.015){LIVE.anchor={x:D.cx,y:D.cy};LIVE.steadySince=tnow;}
-    else if(LIVE.steadySince){const left=1.8-(tnow-LIVE.steadySince)/1000;
-      if(left<=0){LIVE.autoDone=true;LIVE.steadySince=0;$('shutter').click();}
-      else{b.className='badge b-wait';b.textContent=`Hold still… auto-capture in ${Math.ceil(left)}`;}}
-  }
+  coachTick(D);
+  aimAtMoon(D);
   if(!prev){vctx.strokeStyle='#f5c76b';vctx.lineWidth=3;vctx.beginPath();vctx.arc(cx,cy,r*1.8+6,0,7);vctx.stroke();return;}
   const R=r*1.4,S=Math.max(8,Math.min(1400,Math.round(2*R*f)));
   if(lm.width!==S){lm.width=S;lm.height=S;}
@@ -1106,6 +1165,7 @@ function liveLoop(){
   const fr=S/(2*R),g=lmx.createRadialGradient(S/2,S/2,r*fr,S/2,S/2,R*fr);g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,0)');
   lmx.fillStyle=g;lmx.fillRect(0,0,S,S);
   vctx.drawImage(lm,cx-S/2,cy-S/2);
+  vctx.strokeStyle='#f5c76b';vctx.lineWidth=4;vctx.shadowColor='#000';vctx.shadowBlur=4;vctx.beginPath();vctx.arc(cx,cy,S/2*0.75+6,0,7);vctx.stroke();vctx.shadowBlur=0;   // gold ring: moon found
 }
 view.addEventListener('click',e=>{const rc=view.getBoundingClientRect();LIVE.hint={x:(e.clientX-rc.left)/rc.width,y:(e.clientY-rc.top)/rc.height};LIVE.det=null;LIVE.lastDet=0;LIVE.miss=0;});
 $('shutter').onclick=async()=>{
