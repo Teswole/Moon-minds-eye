@@ -1,4 +1,4 @@
-// 2026-11-18 4:35 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-18 7:35 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -6,20 +6,31 @@ struct CameraView: View {
     @EnvironmentObject var camera: CameraModel
     @EnvironmentObject var location: LocationModel
     @State private var showOptions = false
+    @State private var live = false          // camera starts only when the person taps Start
     private let gold = Color(red: 0.96, green: 0.78, blue: 0.42)
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             WebProcessorHost().frame(width: 2, height: 2).opacity(0.01).allowsHitTesting(false)
+            if !live { intro } else {
             PreviewView(session: camera.session, moonPoint: camera.moonPoint)
                 .ignoresSafeArea(edges: .top)
             VStack {
-                Text(camera.moonPoint == nil ? camera.status : "Moon locked ✓")
-                    .font(.subheadline.bold())
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .padding(.top, 12)
+                HStack {
+                    Button(action: { camera.stop(); live = false }) {
+                        Image(systemName: "xmark").font(.headline).frame(width: 40, height: 40)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }.accessibilityLabel("Stop camera and show tips")
+                    Spacer()
+                    Text(camera.moonPoint == nil ? camera.status : "Moon locked ✓")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    Spacer()
+                    Color.clear.frame(width: 40, height: 40)
+                }
+                .padding(.horizontal, 16).padding(.top, 12)
                 Spacer()
                 if camera.lenses.count > 1 {
                     HStack(spacing: 10) {
@@ -61,11 +72,50 @@ struct CameraView: View {
                     .font(.caption).foregroundStyle(.secondary).padding(.bottom, 14)
             }
             .foregroundStyle(.white)
+            }
         }
         .sheet(isPresented: $showOptions) { OptionsSheet().environmentObject(camera).presentationDetents([.medium]) }
         .sheet(isPresented: $camera.showResult) { ResultSheet().environmentObject(camera) }
-        .onAppear { camera.start() }
-        .onDisappear { camera.stop() }
+        .onDisappear { camera.stop(); live = false }
+    }
+
+    /// Tips screen shown first, so there is time to read before the camera turns on
+    private var intro: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Image(systemName: "camera.aperture").font(.system(size: 44)).foregroundStyle(gold)
+                    .frame(maxWidth: .infinity)
+                Text("Mind's-eye camera").font(.title.bold()).frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 14) {
+                    tip("1.circle.fill", "Tap **Start camera** and allow camera access if asked.")
+                    tip("2.circle.fill", "Point at the moon. **Moon locked ✓** means it found it.")
+                    tip("3.circle.fill", "Tap **Zoom lens** if you have one, and keep trees or rooftops in the picture.")
+                    tip("4.circle.fill", "**Step back** from the trees and houses. The farther away they are, the bigger the moon looks next to them.")
+                    tip("5.circle.fill", "**Hold still** and tap the round button. It takes a scene shot plus 3 metered moon shots and keeps the sharpest real moon.")
+                    tip("moon.stars.fill", "Best when the moon is low (under about 10°). Check the green window on the Moon tab.")
+                }
+                .font(.body)
+                Button(action: { live = true; camera.start() }) {
+                    Text("Start camera").font(.headline).foregroundStyle(.black)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                        .background(gold, in: Capsule())
+                }
+                .padding(.top, 8)
+                if camera.lastResult != nil {
+                    Button("See last photo") { camera.showResult = true }
+                        .frame(maxWidth: .infinity).foregroundStyle(gold)
+                }
+            }
+            .padding(24).padding(.top, 30)
+            .foregroundStyle(.white)
+        }
+    }
+
+    private func tip(_ icon: String, _ text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon).foregroundStyle(gold).font(.title3).frame(width: 28)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     @ViewBuilder private var thumbnail: some View {
