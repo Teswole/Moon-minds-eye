@@ -1,4 +1,4 @@
-// 2026-11-20 2:50 AM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
+// 2026-11-20 3:25 AM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
 import SwiftUI
 
 struct MoonView: View {
@@ -64,7 +64,7 @@ struct MoonView: View {
         }
     }
 
-    /// Big-moon alerts: notifications from this app, only on this phone (no calendar invites)
+    /// Big-moon alerts: notifications from this app, only on this phone (only on this phone)
     private func alertCard(lat: Double, lng: Double) -> some View {
         let day = DateFormatter(); day.dateFormat = "EEE MMM d"
         let t = DateFormatter(); t.dateFormat = "h:mm a"
@@ -72,7 +72,7 @@ struct MoonView: View {
         return card {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Big-moon alerts").font(.headline)
-                Text("Your phone buzzes before each low-moon window. Only you get them; nothing goes to a calendar.")
+                Text("Your phone buzzes before each low-moon window. Only your phone gets them.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Toggle("Alert me", isOn: Binding(get: { alerts.on }, set: { alerts.on = $0; redo() })).tint(gold)
                 Picker("How early", selection: Binding(get: { alerts.lead }, set: { alerts.lead = $0; redo() })) {

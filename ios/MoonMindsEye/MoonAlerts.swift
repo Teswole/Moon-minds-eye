@@ -1,4 +1,4 @@
-// 2026-11-20 2:50 AM CST — Big-moon alerts: phone notifications before each low-moon window (no calendar needed)
+// 2026-11-20 3:25 AM CST — Big-moon alerts: phone notifications before each low-moon window
 import Foundation
 import UserNotifications
 import SwiftUI
