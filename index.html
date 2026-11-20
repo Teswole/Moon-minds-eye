@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.7 — 2026-11-20 2:50 AM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.8 — 2026-11-20 3:20 AM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -189,6 +189,7 @@
         <button id="appAlertBtn" class="btn gold mt">Turn on alerts in the iPhone app</button>
         <div id="appAlertHow" class="explain glass hidden"><p><b>👇 Alerts are turned on inside the app, not on this website.</b></p><p><b>In the app:</b> open <b>Moon Mind's Eye</b> → <b>Moon</b> tab → <b>Big-moon alerts</b> → turn on <b>Alert me</b>, then tap <b>Allow</b> for notifications.</p><p>No app yet? It's in testing through <b>TestFlight</b>. Ask the developer for an invite.</p></div>
         <button id="alertBtn" class="btn glass mt">Save to a calendar instead</button>
+        <p class="mute small" style="margin:6px 0 0">Calendar saves go to your iPhone's <b>default</b> calendar. Set it first: <b>Settings → Apps → Calendar → Default Calendar</b>.</p>
         <button id="alertShare" class="btn glass mt hidden">Share the alerts file instead</button>
         <p id="alertMsg" class="mute small" style="margin:8px 0 0"></p>
       </div>
@@ -1238,7 +1239,7 @@ $('alertFull').onchange=refreshAlertList;
 const canShareIcs=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'a.ics',{type:'text/calendar'})]}));}catch(e){return false;}};
 $('appAlertBtn').onclick=()=>{const h=$('appAlertHow'),open=h.classList.toggle('hidden')===false;$('appAlertBtn').textContent=open?'Hide the steps':'Turn on alerts in the iPhone app';if(open)h.scrollIntoView({behavior:'smooth',block:'center'});};   // alerts are set in the app; this shows how
 $('alertBtn').onclick=()=>{
-  if(!confirm('Your iPhone will add these to your default calendar. If that calendar is shared, everyone in it gets the invites.\n\nWhen Calendar opens, pick your own personal calendar. Continue?'))return;
+  if(!confirm('A website can\'t choose the calendar. Your iPhone puts these in your DEFAULT calendar, and if that one is shared, everyone in it gets the invites.\n\nTo use your personal calendar, first go to Settings → Apps → Calendar → Default Calendar and pick it, then come back and tap this again.\n\nTap OK only if your default calendar is already your personal one.'))return;
   const ws=upcomingAlerts();if(!ws.length)return;const ics=buildIcs(ws,+$('alertLead').value);
   // Safari opens a calendar file and offers "Add All" to the Calendar app
   const a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);a.download='big-moon-alerts.ics';document.body.appendChild(a);a.click();a.remove();
