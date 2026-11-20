@@ -1,8 +1,9 @@
-// 2026-11-14 3:10 PM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
+// 2026-11-20 2:25 AM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
 import SwiftUI
 
 struct MoonView: View {
     @EnvironmentObject var location: LocationModel
+    @EnvironmentObject var alerts: MoonAlerts
     @State private var now = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     private let gold = Color(red: 0.96, green: 0.78, blue: 0.42)
@@ -24,6 +25,7 @@ struct MoonView: View {
                             stat("\(Int((m.fraction * 100).rounded()))%", "Lit")
                         }
                         zoneCard(m, sun: sun, lat: c.latitude, lng: c.longitude)
+                        alertCard(lat: c.latitude, lng: c.longitude)
                     } else if location.denied {
                         card { Text("Location is off. Turn it on in Settings → Moon Mind's Eye → Location, so the app can find the moon in your sky.") }
                     } else {
@@ -35,6 +37,8 @@ struct MoonView: View {
         }
         .foregroundStyle(.white)
         .onReceive(timer) { now = $0 }
+        .onAppear { if let c = location.coordinate { alerts.refresh(lat: c.latitude, lng: c.longitude) } }
+        .onChange(of: location.coordinate?.latitude) { _, _ in if let c = location.coordinate { alerts.refresh(lat: c.latitude, lng: c.longitude) } }
     }
 
     private func zoneCard(_ m: MoonState, sun: Double, lat: Double, lng: Double) -> some View {
@@ -54,6 +58,42 @@ struct MoonView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     Text("No low-moon window in the next 2 days").foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Big-moon alerts: notifications from this app, only on this phone (no calendar invites)
+    private func alertCard(lat: Double, lng: Double) -> some View {
+        let day = DateFormatter(); day.dateFormat = "EEE MMM d"
+        let t = DateFormatter(); t.dateFormat = "h:mm a"
+        let redo = { alerts.refresh(lat: lat, lng: lng) }
+        return card {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Big-moon alerts").font(.headline)
+                Text("Your phone buzzes before each low-moon window. Only you get them; nothing goes to a calendar.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Toggle("Alert me", isOn: Binding(get: { alerts.on }, set: { alerts.on = $0; redo() })).tint(gold)
+                Picker("How early", selection: Binding(get: { alerts.lead }, set: { alerts.lead = $0; redo() })) {
+                    Text("5 minutes before").tag(5); Text("15 minutes before").tag(15)
+                    Text("30 minutes before").tag(30); Text("1 hour before").tag(60)
+                }
+                .pickerStyle(.menu).disabled(!alerts.on)
+                Toggle("Only nights at least 40% lit", isOn: Binding(get: { alerts.brightOnly }, set: { alerts.brightOnly = $0; redo() }))
+                    .tint(gold).font(.subheadline)
+                if !alerts.note.isEmpty { Text(alerts.note).font(.footnote).foregroundStyle(alerts.blocked ? .orange : .secondary) }
+                if alerts.blocked {
+                    Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
+                        .font(.subheadline.bold()).foregroundStyle(gold)
+                }
+                ForEach(Array(alerts.upcoming.prefix(4).enumerated()), id: \.offset) { _, w in
+                    HStack {
+                        Text(day.string(from: w.start)).bold()
+                        Spacer()
+                        Text("\(t.string(from: w.start))–\(t.string(from: w.end)) · \(w.lit)% · \(w.dir)").foregroundStyle(.secondary)
+                    }
+                    .font(.footnote)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

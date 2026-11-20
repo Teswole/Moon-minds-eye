@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.5 — 2026-11-19 4:05 PM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v2.6 — 2026-11-20 2:25 AM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -180,13 +180,15 @@
       </div>
       <div class="card glass">
         <h2>Big-moon alerts</h2>
-        <p class="mute" style="margin:0 0 10px">Get a phone alert before each low-moon window, through your iPhone Calendar.</p>
+        <p class="mute" style="margin:0 0 10px">Get a phone alert before each low-moon window. The best way is the Moon Mind's Eye iPhone app: it buzzes only your phone and never touches a calendar.</p>
         <div class="row2" style="font-size:15px;color:var(--ink);align-items:center"><label for="alertLead">Alert me</label>
           <select id="alertLead" style="font:inherit;color:var(--ink);background:rgba(10,14,30,.7);border:1px solid var(--line);border-radius:12px;padding:8px 10px">
             <option value="5">5 min before</option><option value="15" selected>15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select></div>
         <label class="chk"><input id="alertFull" type="checkbox" checked> Only nights the moon is at least 40% lit</label>
         <div id="alertList" class="mute small"></div>
-        <button id="alertBtn" class="btn gold mt">Add alerts to my Calendar</button>
+        <button id="appAlertBtn" class="btn gold mt">Turn on alerts in the iPhone app</button>
+        <div id="appAlertHow" class="explain glass hidden"><p><b>In the app:</b> open <b>Moon Mind's Eye</b> → <b>Moon</b> tab → <b>Big-moon alerts</b> → turn on <b>Alert me</b>, then tap <b>Allow</b> for notifications.</p><p>No app yet? It's in testing through <b>TestFlight</b>. Ask the developer for an invite.</p></div>
+        <button id="alertBtn" class="btn glass mt">Save to a calendar instead</button>
         <button id="alertShare" class="btn glass mt hidden">Share the alerts file instead</button>
         <p id="alertMsg" class="mute small" style="margin:8px 0 0"></p>
       </div>
@@ -1234,7 +1236,9 @@ function refreshAlertList(){
 }
 $('alertFull').onchange=refreshAlertList;
 const canShareIcs=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'a.ics',{type:'text/calendar'})]}));}catch(e){return false;}};
+$('appAlertBtn').onclick=()=>$('appAlertHow').classList.toggle('hidden');
 $('alertBtn').onclick=()=>{
+  if(!confirm('Your iPhone will add these to your default calendar. If that calendar is shared, everyone in it gets the invites.\n\nWhen Calendar opens, pick your own personal calendar. Continue?'))return;
   const ws=upcomingAlerts();if(!ws.length)return;const ics=buildIcs(ws,+$('alertLead').value);
   // Safari opens a calendar file and offers "Add All" to the Calendar app
   const a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);a.download='big-moon-alerts.ics';document.body.appendChild(a);a.click();a.remove();

@@ -1,4 +1,4 @@
-// 2026-11-14 3:10 PM CST — Moon and sun position math (same formulas as the website, accurate to about 1°)
+// 2026-11-20 2:20 AM CST — Moon and sun position math (same formulas as the website, accurate to about 1°)
 import Foundation
 
 struct MoonState {
@@ -67,6 +67,24 @@ enum MoonMath {
     }
 
     /// Next "illusion zone": moon 0–10° up while the sky is getting dark or dark.
+    /// Every big-moon window (moon 0–10° up, sun below 2°) in the next few days, to the minute
+    static func windows(from now: Date, lat: Double, lng: Double, days: Double) -> [(start: Date, end: Date)] {
+        func ok(_ t: Date) -> Bool { let m = moon(t, lat: lat, lng: lng); return m.altitude >= 0 && m.altitude <= 10 && sunAltitude(t, lat: lat, lng: lng) < 2 }
+        func edge(_ a: Date, _ b: Date) -> Date {   // first minute where ok() changes between a and b
+            var t = a, was = ok(a); while t < b { t = t.addingTimeInterval(60); if ok(t) != was { return t } }; return b
+        }
+        var out: [(Date, Date)] = [], t = now, start: Date? = ok(now) ? now : nil, prev = now
+        let end = now.addingTimeInterval(days * 86400)
+        while t <= end {
+            let o = ok(t)
+            if o && start == nil { start = edge(prev, t) }
+            if !o, let st = start { out.append((st, edge(prev, t))); start = nil }
+            prev = t; t = t.addingTimeInterval(600)
+        }
+        if let st = start { out.append((st, end)) }
+        return out.map { (start: $0.0, end: $0.1) }
+    }
+
     static func nextWindow(from now: Date, lat: Double, lng: Double, days: Double = 2) -> (start: Date, end: Date?)? {
         var start: Date? = nil
         var t = now
