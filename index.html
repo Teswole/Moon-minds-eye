@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v2.9 — 2026-11-20 3:25 AM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v3.0 — 2026-11-20 3:40 AM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -603,14 +603,19 @@ function compassSVG(p){
 <g clip-path="url(#${p}face)"><circle cx="100" cy="100" r="85" fill="url(#${p}paper)"></circle><rect x="15" y="15" width="170" height="170" filter="url(#${p}age)" opacity="0.55"></rect></g>
 <circle cx="100" cy="100" r="84" fill="none" stroke="#4a3112" stroke-width="1"></circle><circle cx="100" cy="100" r="71" fill="none" stroke="#4a3112" stroke-width="0.6"></circle>
 ${ticks}${nums}<circle cx="100" cy="100" r="44" fill="none" stroke="#6b4c22" stroke-width="0.6" stroke-dasharray="1.5 2.5"></circle>${rose}${L}
-<g id="${p}moonMk"><circle cx="100" cy="22" r="9" fill="#fff6dc" opacity="0.35"></circle><circle cx="100" cy="22" r="6" fill="url(#${p}moon)" stroke="#2b1d0b" stroke-width="1"></circle></g>
+<g id="${p}moonMk"><circle cx="100" cy="22" r="13" fill="#fff6dc" opacity="0.22"></circle><circle cx="100" cy="22" r="10.5" fill="#0b0f1c" stroke="#2b1d0b" stroke-width="1"></circle><circle class="mmFallback" cx="100" cy="22" r="9" fill="url(#${p}moon)"></circle><image class="mmImg" x="89.5" y="11.5" width="21" height="21" href=""></image></g>
 </g>
 <circle cx="100" cy="100" r="8" fill="url(#${p}brass)" stroke="#3a260b" stroke-width="1"></circle><circle cx="98" cy="98" r="2.5" fill="#fff3c8" opacity="0.8"></circle>
 <polygon points="100,3 106,15 94,15" fill="#d1513b" stroke="#3a260b" stroke-width="0.8"></polygon>
 <ellipse cx="78" cy="62" rx="52" ry="30" fill="#ffffff" opacity="0.10" transform="rotate(-25 78 62)"></ellipse>`;
 }
 $('smallCompass').innerHTML=compassSVG('s');$('bigCompass').innerHTML=compassSVG('b');
-function placeMoonMarker(){const vis=!!MOON;['s','b'].forEach(p=>{const m=document.getElementById(p+'moonMk');if(!m)return;m.style.display=vis?'':'none';if(vis)m.setAttribute('transform',`rotate(${MOON.bearing.toFixed(1)} 100 100)`);});}
+function placeMoonMarker(){const vis=!!MOON;['s','b'].forEach(p=>{const m=document.getElementById(p+'moonMk');if(!m)return;m.style.display=vis?'':'none';if(!vis)return;
+  m.setAttribute('transform',`rotate(${MOON.bearing.toFixed(1)} 100 100)`);
+  const im=m.querySelector('.mmImg'),fb=m.querySelector('.mmFallback'),h=headSm==null?0:headSm;
+  if(im){if(MOONICON){im.setAttribute('href',MOONICON);fb&&fb.setAttribute('opacity','0');}
+    im.setAttribute('transform',`rotate(${(-(MOON.bearing-h)).toFixed(1)} 100 22)`);}});}   // keep the little moon upright on screen, the way it looks in your sky
+let MOONICON='';
 function drawCompass(){
   placeMoonMarker();
   const h=headSm;
@@ -1386,7 +1391,8 @@ function renderMoon(cv,{inc,chi,rot=0,tint=null,earth=0.03}){
 function drawHero(il,q){if(!TEX.ready)return;const key=il.fraction.toFixed(3)+'|'+(q==null?'n':q.toFixed(2));if(key===LAST_HERO)return;LAST_HERO=key;
   // chi = bright-limb position angle (from north, eastward); q = parallactic angle → tilt as seen from your spot
   const chi=il.angle, rot=(q==null?0:q);
-  renderMoon($('moonHero'),{inc:il.inc,chi,rot,earth:0.03});}
+  renderMoon($('moonHero'),{inc:il.inc,chi,rot,earth:0.03});
+  {const ic=mk(84,84);renderMoon(ic,{inc:il.inc,chi,rot,earth:0.06});MOONICON=ic.toDataURL('image/png');placeMoonMarker();}}   // compass moon: same real phase and tilt as the big moon
 loadTex().then(()=>{LAST_HERO=0;TL.moonCache={};updateMoon();}).catch(()=>{});
 
 /* ---------- Start ---------- */
