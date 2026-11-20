@@ -1,4 +1,4 @@
-// 2026-11-20 2:25 AM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
+// 2026-11-20 2:50 AM CST — Moon tab: tonight's moon, where to look, and the next big-moon window
 import SwiftUI
 
 struct MoonView: View {
@@ -82,7 +82,24 @@ struct MoonView: View {
                 .pickerStyle(.menu).disabled(!alerts.on)
                 Toggle("Only nights at least 40% lit", isOn: Binding(get: { alerts.brightOnly }, set: { alerts.brightOnly = $0; redo() }))
                     .tint(gold).font(.subheadline)
-                if !alerts.note.isEmpty { Text(alerts.note).font(.footnote).foregroundStyle(alerts.blocked ? .orange : .secondary) }
+                if alerts.on && alerts.armed {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Alerts are ON").bold()
+                            if let n = alerts.nextAlert { Text("Next alert: \(day.string(from: n)) at \(t.string(from: n))").font(.footnote) }
+                        }
+                    }
+                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.green.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                } else if alerts.on && !alerts.blocked {
+                    HStack { ProgressView(); Text("Setting up alerts…").font(.footnote) }
+                } else if !alerts.on {
+                    HStack { Image(systemName: "bell.slash").foregroundStyle(.secondary); Text("Alerts are off").font(.footnote).foregroundStyle(.secondary) }
+                }
+                if !alerts.note.isEmpty && !(alerts.on && !alerts.armed && !alerts.blocked) { Text(alerts.note).font(.footnote).foregroundStyle(alerts.blocked ? .orange : .secondary) }
+                Button(alerts.testSent ? "✓ Test sent. Watch for it in 5 seconds" : "Send me a test alert") { alerts.sendTest() }
+                    .font(.subheadline.bold()).foregroundStyle(alerts.testSent ? .green : gold)
                 if alerts.blocked {
                     Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
                         .font(.subheadline.bold()).foregroundStyle(gold)

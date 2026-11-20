@@ -1,7 +1,8 @@
-// 2026-11-20 2:20 AM CST — Big-moon alerts: phone notifications before each low-moon window (no calendar needed)
+// 2026-11-20 2:50 AM CST — Big-moon alerts: phone notifications before each low-moon window (no calendar needed)
 import Foundation
 import UserNotifications
 import SwiftUI
+import UIKit
 
 final class MoonAlerts: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     @AppStorage("alertsOn") var on = false { didSet { objectWillChange.send() } }
@@ -10,6 +11,9 @@ final class MoonAlerts: NSObject, ObservableObject, UNUserNotificationCenterDele
     @Published var upcoming: [(start: Date, end: Date, lit: Int, dir: String)] = []
     @Published var note = ""
     @Published var blocked = false
+    @Published var nextAlert: Date?          // when the next alert will buzz, shown as a confirmation
+    @Published var armed = false             // true once alerts are really scheduled
+    @Published var testSent = false
 
     private let center = UNUserNotificationCenter.current()
     private let prefix = "bigmoon-"
@@ -31,27 +35,40 @@ final class MoonAlerts: NSObject, ObservableObject, UNUserNotificationCenterDele
         }
         DispatchQueue.main.async { self.upcoming = wins.map { (start: $0.0, end: $0.1, lit: $0.2, dir: $0.3) } }
         clear {
-            guard self.on else { DispatchQueue.main.async { self.note = "" }; return }
+            guard self.on else { DispatchQueue.main.async { self.note = "Alerts are off."; self.armed = false; self.nextAlert = nil }; return }
             self.center.requestAuthorization(options: [.alert, .sound]) { ok, _ in
-                guard ok else { DispatchQueue.main.async { self.blocked = true; self.note = "Notifications are off for this app. Turn them on in Settings → Notifications → Moon Mind's Eye." }; return }
+                guard ok else { DispatchQueue.main.async { self.blocked = true; self.armed = false; self.note = "Notifications are off for this app. Turn them on in Settings → Notifications → Moon Mind's Eye." }; return }
                 DispatchQueue.main.async { self.blocked = false }
                 let t = DateFormatter(); t.dateFormat = "h:mm a"
-                var count = 0
+                var count = 0, first: Date? = nil
                 for (i, w) in wins.prefix(30).enumerated() {
                     let span = "\(t.string(from: w.0))–\(t.string(from: w.1))"
                     let before = w.0.addingTimeInterval(-Double(self.lead) * 60)
                     if before > Date() {
                         self.add(id: "\(self.prefix)\(i)a", at: before, title: "🌙 Big moon in \(self.lead) minutes",
                                  body: "Look \(w.3), low over the horizon. Best window \(span). \(w.2)% lit. Open the camera and let the Shot Coach help!")
-                        count += 1
+                        count += 1; if first == nil { first = before }
                     }
                     if w.0 > Date() {
                         self.add(id: "\(self.prefix)\(i)b", at: w.0, title: "🌙 The big moon is up now",
                                  body: "Look \(w.3). The best window lasts until \(t.string(from: w.1)).")
                     }
                 }
-                DispatchQueue.main.async { self.note = count == 0 ? "No big-moon windows in the next 2 weeks with these settings." : "Alerts are set for the next \(count) big-moon windows. They refresh each time you open the app." }
+                DispatchQueue.main.async { self.armed = count > 0; self.nextAlert = first
+                    if count > 0 { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+                    self.note = count == 0 ? "No big-moon windows in the next 2 weeks with these settings." : "Set for the next \(count) big-moon windows. They refresh each time you open the app." }
             }
+        }
+    }
+
+    /// A sample alert in 5 seconds, so you can see what it looks like
+    func sendTest() {
+        center.requestAuthorization(options: [.alert, .sound]) { ok, _ in
+            guard ok else { DispatchQueue.main.async { self.blocked = true; self.note = "Notifications are off for this app. Turn them on in Settings → Notifications → Moon Mind's Eye." }; return }
+            let c = UNMutableNotificationContent(); c.title = "🌙 Test alert"; c.body = "This is what a big-moon alert looks like. You're all set!"; c.sound = .default
+            self.center.add(UNNotificationRequest(identifier: "bigmoon-test", content: c, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))
+            DispatchQueue.main.async { self.testSent = true; UINotificationFeedbackGenerator().notificationOccurred(.success)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { self.testSent = false } }
         }
     }
 
