@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Moon Mind's Eye v3.0 — 2026-11-20 3:40 AM CST -->
+<!DOCTYPE html><!-- Moon Mind's Eye v3.1 — 2026-11-20 10:45 PM CST -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1396,7 +1396,7 @@ function drawHero(il,q){if(!TEX.ready)return;const key=il.fraction.toFixed(3)+'|
 loadTex().then(()=>{LAST_HERO=0;TL.moonCache={};updateMoon();}).catch(()=>{});
 
 /* ---------- Start ---------- */
-(function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}if(!window.MME_NATIVE)tryGps();})();
+(function init(){const s=load('mme-loc');if(s){const[a,b]=s.split(',').map(Number);if(isFinite(a)&&isFinite(b))setLoc(a,b,'saved');}if(!window.MME_NATIVE&&!window.MME_APP)tryGps();})();
 
 /* ---------- Hook for the iPhone app: process one photo, hand back the finished picture ---------- */
 window.mmeProcess=async(b64,opts)=>{
@@ -1417,6 +1417,19 @@ window.mmeProcess=async(b64,opts)=>{
   const checks=[...$('checks').children].map(c=>c.textContent.trim()).filter(Boolean).join(' · ');
   return{jpeg:btoa(bin),found:true,checks,size:$('sizeVal').textContent};
 };
+
+/* ---------- Inside the iPhone app: the pro camera and phone alerts are the app's own ---------- */
+if(window.MME_APP){
+  const toApp=m=>{try{window.webkit.messageHandlers.mme.postMessage(m);}catch(e){}};
+  window.mmeAppLoc=(a,b)=>setLoc(a,b,'iPhone location');
+  $('liveStart').textContent='Start pro camera';
+  $('liveStart').onclick=()=>toApp('camera');
+  $('goLive').onclick=()=>toApp('camera');
+  $('appAlertBtn').textContent='Set up alerts';
+  $('appAlertBtn').onclick=()=>toApp('alerts');
+  $('appAlertHow').classList.add('hidden');
+  const t=document.querySelector('#liveTips');if(t)t.insertAdjacentHTML('afterbegin','<li><b>Pro camera:</b> real zoom lens, a metered 3-shot moon bracket and the Shot Coach.</li>');
+}
 </script>
 </body>
 </html>

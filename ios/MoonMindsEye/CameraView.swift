@@ -1,4 +1,4 @@
-// 2026-11-18 10:30 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
+// 2026-11-20 10:40 PM CST — Camera tab: live view, lens buttons, shutter, mind's-eye options and the result screen
 import SwiftUI
 import AVFoundation
 
@@ -6,6 +6,7 @@ struct CameraView: View {
     @EnvironmentObject var camera: CameraModel
     @EnvironmentObject var location: LocationModel
     @State private var showOptions = false
+    var onClose: (() -> Void)? = nil
     @StateObject private var coach = ShotCoach()
     @State private var live = false          // camera starts only when the person taps Start
     private let gold = Color(red: 0.96, green: 0.78, blue: 0.42)
@@ -82,6 +83,11 @@ struct CameraView: View {
     private var intro: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                if let close = onClose {
+                    Button(action: { camera.stop(); close() }) {
+                        Label("Back", systemImage: "chevron.left").font(.headline).foregroundStyle(gold)
+                    }
+                }
                 Image(systemName: "camera.aperture").font(.system(size: 44)).foregroundStyle(gold)
                     .frame(maxWidth: .infinity)
                 Text("Mind's-eye camera").font(.title.bold()).frame(maxWidth: .infinity)

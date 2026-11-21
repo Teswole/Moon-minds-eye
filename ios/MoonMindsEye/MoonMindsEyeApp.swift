@@ -1,4 +1,4 @@
-// 2026-11-20 2:25 AM CST — Moon Mind's Eye iPhone app: entry point and tabs
+// 2026-11-20 10:40 PM CST — Moon Mind's Eye iPhone app: the full page, with the pro camera and alerts built in
 import SwiftUI
 
 @main
@@ -9,12 +9,7 @@ struct MoonMindsEyeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                MoonView()
-                    .tabItem { Label("Moon", systemImage: "moon.stars") }
-                CameraView()
-                    .tabItem { Label("Camera", systemImage: "camera") }
-            }
+            AppShell()
             .environmentObject(location)
             .environmentObject(camera)
             .environmentObject(alerts)
